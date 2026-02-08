@@ -3,7 +3,14 @@ import { useSpeech } from "../../hooks/useSpeech";
 export default function MonthlyReflectionCard({ reflection }: any) {
   const { speak, stop } = useSpeech();
 
-  const content = reflection.plain ?? reflection.poetic ?? reflection;
+  // ✅ Normalize: if array is passed, take the first item
+  const normalized =
+    Array.isArray(reflection) ? reflection[0] : reflection;
+
+  if (!normalized) return null;
+
+  const content =
+    normalized.plain ?? normalized.poetic ?? normalized;
 
   const voiceText = `
     ${content.title}.
@@ -14,20 +21,31 @@ export default function MonthlyReflectionCard({ reflection }: any) {
   return (
     <div className="bg-white/5 rounded-2xl p-8 border border-white/10 space-y-4">
       <div className="flex justify-between items-start">
-        <h2 className="text-xl text-white/90">{content.title}</h2>
+        <h2 className="text-xl text-white/90">
+          {content.title}
+        </h2>
 
-        <button onClick={() => speak(voiceText)}>🔊 Listen</button>
+        <button onClick={() => speak(voiceText)}>
+          🔊 Listen
+        </button>
       </div>
 
-      <p className="text-white/70">{content.summary}</p>
+      <p className="text-white/70">
+        {content.summary}
+      </p>
 
       <ul className="text-sm text-white/60 space-y-1">
-        {content.highlights.map((h: string, i: number) => (
-          <li key={i}>• {h}</li>
-        ))}
+        {content.highlights.map(
+          (h: string, i: number) => (
+            <li key={i}>• {h}</li>
+          )
+        )}
       </ul>
 
-      <button onClick={stop} className="text-xs text-white/40">
+      <button
+        onClick={stop}
+        className="text-xs text-white/40"
+      >
         Stop voice
       </button>
     </div>
