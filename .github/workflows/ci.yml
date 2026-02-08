@@ -1,9 +1,7 @@
-name: DreamSync CI
+name: Build Check
 
 on:
   push:
-    branches: [main]
-  pull_request:
     branches: [main]
 
 jobs:
@@ -11,21 +9,19 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 18
 
-      - name: Install & build backend
+      - name: Backend build
         run: |
           cd dreamsync-backend
           npm install
           npm run build
 
-      - name: Install & build frontend
+      - name: Frontend build
         run: |
           cd dreamsync-frontend
           npm install
