@@ -1,0 +1,78 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String            @id @default(uuid())
+  email          String            @unique
+  createdAt      DateTime          @default(now())
+  password       String
+  username       String?           @unique
+  usernameLocked Boolean           @default(false)
+  dreams         Dream[]
+  insights       InsightSnapshot[]
+}
+
+model Dream {
+  id             String            @id @default(uuid())
+  userId         String
+  content        String
+  mood           String?
+  tags           String[]
+  createdAt      DateTime          @default(now())
+  title          String?
+  communityShare CommunityDream?
+  user           User              @relation(fields: [userId], references: [id])
+  reflections    DreamReflection[]
+  interpretation Interpretation?
+}
+
+model Interpretation {
+  id        String   @id @default(uuid())
+  dreamId   String   @unique
+  createdAt DateTime @default(now())
+  content   Json
+  dream     Dream    @relation(fields: [dreamId], references: [id])
+}
+
+model DreamReflection {
+  id        String   @id @default(uuid())
+  dreamId   String
+  question  String
+  answer    String
+  createdAt DateTime @default(now())
+  dream     Dream    @relation(fields: [dreamId], references: [id])
+}
+
+model InsightSnapshot {
+  id        String      @id @default(uuid())
+  userId    String
+  period    String
+  type      InsightType
+  content   Json
+  createdAt DateTime    @default(now())
+  user      User        @relation(fields: [userId], references: [id])
+
+  @@unique([userId, period, type])
+}
+
+model CommunityDream {
+  id              String   @id @default(uuid())
+  originalDreamId String   @unique
+  anonymizedText  String
+  theme           String
+  mood            String?
+  tags            String[]
+  createdAt       DateTime @default(now())
+  dream           Dream    @relation(fields: [originalDreamId], references: [id])
+}
+
+enum InsightType {
+  WEEKLY
+  MONTHLY
+}
