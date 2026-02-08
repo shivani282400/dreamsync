@@ -131,8 +131,9 @@ export async function getDreamChapters(
     },
   });
 
-  const clusters: typeof dreams[][] = [];
-  let currentCluster: typeof dreams = [];
+  type DreamRow = (typeof dreams)[number];
+  const clusters: DreamRow[][] = [];
+  let currentCluster: DreamRow[] = [];
 
   for (const dream of dreams) {
     if (currentCluster.length === 0) {
