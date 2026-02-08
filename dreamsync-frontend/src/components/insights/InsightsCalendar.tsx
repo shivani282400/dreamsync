@@ -40,20 +40,23 @@ export default function InsightsCalendar({
   const { startOffset, totalDays } = getMonthMeta(month);
   const dayMap = new Map(days.map((d) => [d.date, d]));
 
-  const cells = Array.from({ length: startOffset }, () => null).concat(
-    Array.from({ length: totalDays }, (_, i) => {
+  const cells: Array<CalendarDay | null> = [
+    ...Array.from({ length: startOffset }, () => null),
+    ...Array.from({ length: totalDays }, (_, i) => {
       const day = i + 1;
       const date = `${month}-${String(day).padStart(2, "0")}`;
-      return dayMap.get(date) ?? {
-        date,
-        count: 0,
-        dominantMood: null,
-        tags: [],
-        reflectionCount: 0,
-        dreams: [],
-      };
-    })
-  );
+      return (
+        dayMap.get(date) ?? {
+          date,
+          count: 0,
+          dominantMood: null,
+          tags: [],
+          reflectionCount: 0,
+          dreams: [],
+        }
+      );
+    }),
+  ];
 
   return (
     <div className="bg-gradient-to-br from-white/10 via-white/5 to-transparent rounded-2xl p-6 border border-white/10 backdrop-blur space-y-4">
@@ -91,7 +94,7 @@ export default function InsightsCalendar({
                 <span className="text-white/40">{day.count}</span>
               </div>
               <div className="mt-2 flex gap-1">
-                {day.tags.slice(0, 3).map((tag) => (
+                {day.tags.slice(0, 3).map((tag: string) => (
                   <span
                     key={`${day.date}-${tag}`}
                     className="w-2 h-2 rounded-full bg-white/30"

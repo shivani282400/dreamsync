@@ -11,14 +11,18 @@ export default function InsightLetter({ mode }: { mode: "weekly" | "monthly" }) 
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!period) return;
+    if (!period) {
+      setLoading(false);
+      return;
+    }
+    const safePeriod = period;
 
     async function load() {
       try {
         const data =
           mode === "weekly"
-            ? await getWeeklyInsights(period)
-            : await getMonthlyInsights(period);
+            ? await getWeeklyInsights(safePeriod)
+            : await getMonthlyInsights(safePeriod);
         setContent(data);
       } finally {
         setLoading(false);

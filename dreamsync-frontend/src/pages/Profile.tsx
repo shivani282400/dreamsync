@@ -58,9 +58,6 @@ export default function Profile() {
   const totalDreams = dreams.length;
   const sharedCount = dreams.filter((d) => d.isShared).length;
   const privateCount = Math.max(totalDreams - sharedCount, 0);
-  const lastDreamDate = dreams[0]?.createdAt
-    ? new Date(dreams[0].createdAt).toLocaleDateString()
-    : "No entries yet";
 
   return (
     <PageTransition>
