@@ -1,16 +1,12 @@
 import { useSpeech } from "../../hooks/useSpeech";
+import {
+  normalizeMonthlyReflection,
+} from "../../lib/normalizeMonthlyReflection";
 
 export default function MonthlyReflectionCard({ reflection }: any) {
   const { speak, stop } = useSpeech();
 
-  // ✅ Normalize: if array is passed, take the first item
-  const normalized =
-    Array.isArray(reflection) ? reflection[0] : reflection;
-
-  if (!normalized) return null;
-
-  const content =
-    normalized.plain ?? normalized.poetic ?? normalized;
+  const content = normalizeMonthlyReflection(reflection);
 
   const voiceText = `
     ${content.title}.
@@ -30,17 +26,19 @@ export default function MonthlyReflectionCard({ reflection }: any) {
         </button>
       </div>
 
-      <p className="text-white/70">
-        {content.summary}
-      </p>
+      {content.summary && (
+        <p className="text-white/70">
+          {content.summary}
+        </p>
+      )}
 
-      <ul className="text-sm text-white/60 space-y-1">
-        {content.highlights.map(
-          (h: string, i: number) => (
+      {content.highlights.length > 0 && (
+        <ul className="text-sm text-white/60 space-y-1">
+          {content.highlights.map((h, i) => (
             <li key={i}>• {h}</li>
-          )
-        )}
-      </ul>
+          ))}
+        </ul>
+      )}
 
       <button
         onClick={stop}
