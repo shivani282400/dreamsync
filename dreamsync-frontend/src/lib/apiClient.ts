@@ -3,19 +3,6 @@ import { getAuthToken } from "./authToken";
 
 // ---------- core fetch wrapper ----------
 
-export async function shareDreamToCommunity(dreamId: string) {
-  return apiFetch(`/community/share/${dreamId}`, {
-    method: "POST",
-  });
-}
-
-export async function unshareDreamFromCommunity(dreamId: string) {
-  return apiFetch(`/community/unshare/${dreamId}`, {
-    method: "DELETE",
-  });
-}
-
-
 export async function apiFetch(
   path: string,
   options: RequestInit = {}
@@ -30,7 +17,10 @@ export async function apiFetch(
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  // ✅ SAFE URL CONSTRUCTION (FIXES DOUBLE https:// BUG)
+  const url = new URL(path, API_BASE_URL).toString();
+
+  const response = await fetch(url, {
     ...options,
     headers: {
       ...headers,
@@ -39,11 +29,44 @@ export async function apiFetch(
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.message || `API error: ${response.status}`);
+    let errorMessage = `API error: ${response.status}`;
+    try {
+      const error = await response.json();
+      errorMessage = error.message ?? errorMessage;
+    } catch {
+      // ignore JSON parse errors
+    }
+    throw new Error(errorMessage);
   }
 
   return response.json();
+}
+
+// ---------- Community ----------
+
+export async function shareDreamToCommunity(dreamId: string) {
+  return apiFetch(`/community/share/${dreamId}`, {
+    method: "POST",
+  });
+}
+
+export async function unshareDreamFromCommunity(dreamId: string) {
+  return apiFetch(`/community/unshare/${dreamId}`, {
+    method: "DELETE",
+  });
+}
+
+// ---------- Community feed refresh event ----------
+
+const COMMUNITY_FEED_EVENT = "dreamsync:community-feed-refresh";
+
+export function emitCommunityFeedRefresh() {
+  window.dispatchEvent(new CustomEvent(COMMUNITY_FEED_EVENT));
+}
+
+export function onCommunityFeedRefresh(handler: () => void) {
+  window.addEventListener(COMMUNITY_FEED_EVENT, handler);
+  return () => window.removeEventListener(COMMUNITY_FEED_EVENT, handler);
 }
 
 // ---------- Types ----------
@@ -83,8 +106,6 @@ export type DreamReflection = {
   createdAt: string;
 };
 
-// ---------- Community ----------
-
 export type CommunityDream = {
   id: string;
   anonymizedText: string;
@@ -94,22 +115,6 @@ export type CommunityDream = {
   createdAt: string;
   username: string;
 };
-
-// ---------- Community feed refresh event ----------
-
-const COMMUNITY_FEED_EVENT = "dreamsync:community-feed-refresh";
-
-export function emitCommunityFeedRefresh() {
-  window.dispatchEvent(new CustomEvent(COMMUNITY_FEED_EVENT));
-}
-
-export function onCommunityFeedRefresh(
-  handler: () => void
-) {
-  window.addEventListener(COMMUNITY_FEED_EVENT, handler);
-  return () => window.removeEventListener(COMMUNITY_FEED_EVENT, handler);
-}
-
 
 export type InsightContent = {
   title: string;
@@ -176,7 +181,6 @@ export type DreamChapter = {
 
 // ---------- API helpers ----------
 
-// Get user's dreams
 export async function getDreams(): Promise<DreamsResponse> {
   return apiFetch("/dreams/me");
 }
@@ -185,7 +189,6 @@ export async function getDreamById(id: string): Promise<DreamResponse> {
   return apiFetch(`/dreams/${id}`);
 }
 
-// Create a new dream
 export async function createDream(body: {
   title?: string;
   content: string;
@@ -198,15 +201,13 @@ export async function createDream(body: {
   });
 }
 
-// 🔮 Generate interpretation for a dream
 export async function interpretDream(dreamId: string) {
   return apiFetch(`/api/interpretations/${dreamId}`, {
     method: "POST",
-    body: JSON.stringify({}), // ✅ REQUIRED FIX
+    body: JSON.stringify({}),
   });
 }
 
-// Save a reflection answer for a dream
 export async function createDreamReflection(body: {
   dreamId: string;
   question: string;
@@ -218,14 +219,12 @@ export async function createDreamReflection(body: {
   });
 }
 
-// Get reflections for a dream
 export async function getDreamReflections(
   dreamId: string
 ): Promise<DreamReflection[]> {
   return apiFetch(`/dreams/${dreamId}/reflections`);
 }
 
-// Get community shared dreams (read-only)
 export async function getCommunityFeed(
   theme?: string
 ): Promise<CommunityDream[]> {
@@ -236,7 +235,6 @@ export async function getCommunityFeed(
 
   return apiFetch(`/community/feed${query}`);
 }
-
 
 export async function updateDreamReflection(
   reflectionId: string,
@@ -256,14 +254,12 @@ export async function deleteDreamReflection(
   });
 }
 
-// Weekly insights
 export async function getWeeklyInsights(
   week: string
 ): Promise<InsightContent> {
   return apiFetch(`/insights/weekly?week=${encodeURIComponent(week)}`);
 }
 
-// Monthly insights
 export async function getMonthlyInsights(
   month: string
 ): Promise<InsightContent> {
