@@ -23,9 +23,12 @@ export async function buildApp() {
       "http://localhost:5173",
       "http://127.0.0.1:5173",
       "https://dreamsync-alpha.vercel.app",
+      "https://dreamsync-production.up.railway.app",
+      "https://dreamsync-k01s5j84d-shivani-sharmas-projects-d2fc25ad.vercel.app",
     ],
     credentials: true,
   });
+  
   
   
 
