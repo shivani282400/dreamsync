@@ -12,6 +12,7 @@ import { communityRoutes } from "./modules/community/community.routes.js";
 import { yearlyArcRoutes } from "./modules/insights/yearlyArc.routes.js";
 import { dreamChaptersRoutes } from "./modules/insights/dreamChapters.routes.js";
 import { userRoutes } from "./modules/user/user.routes.js";
+import { healthRoutes } from "./routes/health.routes.js";
 
 export async function buildApp() {
   const app = Fastify({ logger: true });
@@ -35,6 +36,9 @@ export async function buildApp() {
   app.register(yearlyArcRoutes);
   app.register(dreamChaptersRoutes);
   app.register(communityRoutes);
+  app.register(healthRoutes);
+  app.register(userRoutes);
+
 
   return app;
 }
