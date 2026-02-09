@@ -1,4 +1,4 @@
-import type { InterpretationOutput } from "./interpretation.types";
+import type { InterpretationOutput } from "./interpretation.types.js"
 
 /**
  * Hard schema validation

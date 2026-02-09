@@ -1,5 +1,5 @@
 import { FastifyRequest, FastifyReply } from "fastify";
-import { generateInterpretation } from "./interpretation.service";
+import { generateInterpretation } from "./interpretation.service.js"
 
 export async function interpretDreamController(
   request: FastifyRequest<{ Params: { dreamId: string } }>,

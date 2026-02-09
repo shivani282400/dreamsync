@@ -1,5 +1,5 @@
 import { InsightType, PrismaClient } from "@prisma/client";
-import { InsightContent } from "./insights.types";
+import { InsightContent } from "./insights.types.js"
 
 const MONTH_NAMES = [
   "January",

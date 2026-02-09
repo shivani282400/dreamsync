@@ -1,6 +1,6 @@
 import { FastifyInstance } from "fastify";
-import { requireAuth } from "../auth/auth.middleware";
-import { getYearlyArc } from "./yearlyArc.service";
+import { requireAuth } from "../auth/auth.middleware.js"
+import { getYearlyArc } from "./yearlyArc.service.js"
 
 export async function yearlyArcRoutes(app: FastifyInstance) {
   app.get(

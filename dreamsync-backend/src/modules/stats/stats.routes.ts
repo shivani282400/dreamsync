@@ -6,8 +6,8 @@ import {
   calendarStatsController,
   wordFrequencyController,
   tagTrendsController,
-} from "./stats.controller";
-import { requireAuth } from "../auth/auth.middleware";
+} from "./stats.controller.js"
+import { requireAuth } from "../auth/auth.middleware.js"
 
 export async function statsRoutes(app: FastifyInstance) {
   // Phase 4.1

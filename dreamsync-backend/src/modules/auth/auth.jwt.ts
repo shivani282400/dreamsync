@@ -1,5 +1,5 @@
 import jwt, { JwtPayload, Secret, SignOptions } from "jsonwebtoken";
-import { JWT_CONFIG } from "../../config/jwt";
+import { JWT_CONFIG } from "../../config/jwt.js"
 
 const JWT_SECRET: Secret = JWT_CONFIG.secret;
 

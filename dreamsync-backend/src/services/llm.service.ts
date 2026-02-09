@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { InterpretationOutput } from "../modules/interpretation/interpretation.types";
+import { InterpretationOutput } from "../modules/interpretation/interpretation.types.js"
 
 /**
  * Lazy Gemini client

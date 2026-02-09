@@ -5,8 +5,8 @@
  */
 
 import { FastifyBaseLogger } from "fastify";
-import { buildStructuredDreamText, generateEmbedding } from "./embedding.service";
-import { upsertDreamEmbedding } from "./vector.service";
+import { buildStructuredDreamText, generateEmbedding } from "./embedding.service.js"
+import { upsertDreamEmbedding } from "./vector.service.js"
 
 /**
  * Minimal dream shape required for embeddings

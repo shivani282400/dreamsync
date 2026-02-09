@@ -1,5 +1,5 @@
 import { PrismaClient } from "@prisma/client";
-import { findSimilarDreams } from "../../services/vector.service";
+import { findSimilarDreams } from "../../services/vector.service.js"
 
 type DreamCluster = {
   clusterId: string;

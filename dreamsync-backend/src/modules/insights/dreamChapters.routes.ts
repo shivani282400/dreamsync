@@ -1,6 +1,6 @@
 import { FastifyInstance } from "fastify";
-import { requireAuth } from "../auth/auth.middleware";
-import { getDreamChapters } from "./dreamChapters.service";
+import { requireAuth } from "../auth/auth.middleware.js"
+import { getDreamChapters } from "./dreamChapters.service.js"
 
 export async function dreamChaptersRoutes(app: FastifyInstance) {
   app.get(

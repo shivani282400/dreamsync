@@ -2,7 +2,7 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import {
   getMonthlyInsightSnapshot,
   getWeeklyInsightSnapshot,
-} from "./insights.service";
+} from "./insights.service.js"
 
 export async function weeklyInsightsController(
   request: FastifyRequest<{ Querystring: { week?: string } }>,

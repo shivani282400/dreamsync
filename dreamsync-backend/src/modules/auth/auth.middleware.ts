@@ -1,5 +1,5 @@
 import { FastifyRequest, FastifyReply } from "fastify";
-import { verifyToken } from "./auth.jwt";
+import { verifyToken } from "./auth.jwt.js"
 
 export async function requireAuth(
   request: FastifyRequest,

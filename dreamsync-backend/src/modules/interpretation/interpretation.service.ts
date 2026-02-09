@@ -1,16 +1,16 @@
 import {
   buildStructuredDreamText,
   generateEmbedding,
-} from "../../services/embedding.service";
+} from "../../services/embedding.service.js"
 import {
   findSimilarDreams,
   getDreamEmbedding,
-} from "../../services/vector.service";
+} from "../../services/vector.service.js"
 import {
   isValidInterpretation,
   isSafeInterpretation,
-} from "./interpretation.validators";
-import { generateInterpretationWithGemini } from "../../services/gemini.service";
+} from "./interpretation.validators.js"
+import { generateInterpretationWithGemini } from "../../services/gemini.service.js"
 import { PrismaClient } from "@prisma/client";
 
 type InterpretationOutput = {

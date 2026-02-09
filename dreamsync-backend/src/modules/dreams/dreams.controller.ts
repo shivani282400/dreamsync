@@ -1,6 +1,6 @@
 import { FastifyRequest, FastifyReply } from "fastify";
-import { prisma } from "../../plugins/prisma";
-import * as DreamService from "./dreams.service";
+import { prisma } from "../../plugins/prisma.js"
+import * as DreamService from "./dreams.service.js"
 
 // GET /dreams/me
 export async function getMyDreamsController(

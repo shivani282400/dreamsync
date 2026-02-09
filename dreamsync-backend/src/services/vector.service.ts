@@ -1,5 +1,5 @@
 import { Pinecone } from "@pinecone-database/pinecone";
-import { VECTOR_CONFIG } from "../config/vector";
+import { VECTOR_CONFIG } from "../config/vector.js"
 
 export type DreamVectorRecord = {
   dreamId: string;

@@ -3,12 +3,12 @@ import {
   getCommunityFeed,
   shareDreamToCommunity,
   unshareDreamFromCommunity,
-} from "./community.service";
+} from "./community.service.js"
 import {
   communityFeedQuerySchema,
   shareCommunityParamsSchema,
-} from "./community.schema";
-import { requireAuth } from "../auth/auth.middleware";
+} from "./community.schema.js"
+import { requireAuth } from "../auth/auth.middleware.js"
 
 export async function communityRoutes(fastify: FastifyInstance) {
   // 🔍 Read community feed (public)

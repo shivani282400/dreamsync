@@ -2,8 +2,8 @@ import { FastifyInstance } from "fastify";
 import {
   interpretDreamController,
   getInterpretationController,
-} from "./interpretation.controller";
-import { requireAuth } from "../auth/auth.middleware";
+} from "./interpretation.controller.js"
+import { requireAuth } from "../auth/auth.middleware.js"
 
 export async function interpretationRoutes(app: FastifyInstance) {
   app.post(

@@ -1,7 +1,7 @@
 import { PrismaClient } from "@prisma/client";
-import { getFrequencyStats } from "../stats/stats.service";
-import { getEmotionalTrends } from "../stats/emotionalTrends.service";
-import { getDreamClusters } from "../stats/dreamClusters.service";
+import { getFrequencyStats } from "../stats/stats.service.js"
+import { getEmotionalTrends } from "../stats/emotionalTrends.service.js"
+import { getDreamClusters } from "../stats/dreamClusters.service.js"
 
 export async function generateMonthlyReflection(
   prisma: PrismaClient,
