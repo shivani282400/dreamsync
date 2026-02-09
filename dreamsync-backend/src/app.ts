@@ -22,10 +22,11 @@ export async function buildApp() {
     origin: [
       "http://localhost:5173",
       "http://127.0.0.1:5173",
-      "https://dreamsync.vercel.app", // 👈 ADD THIS
+      "https://dreamsync-alpha.vercel.app",
     ],
     credentials: true,
   });
+  
   
 
   // -------- PRISMA --------
