@@ -17,20 +17,25 @@ import { healthRoutes } from "./routes/health.routes.js";
 export async function buildApp() {
   const app = Fastify({ logger: true });
 
-  // -------- CORS --------
+  // -------- CORS (FIRST) --------
   await app.register(cors, {
-    origin: [
-      "http://localhost:5173",
-      "http://127.0.0.1:5173",
-      "https://dreamsync-alpha.vercel.app",
-      "https://dreamsync-production.up.railway.app",
-      "https://dreamsync-k01s5j84d-shivani-sharmas-projects-d2fc25ad.vercel.app",
-    ],
+    origin: (origin, cb) => {
+      if (!origin) return cb(null, true);
+
+      if (
+        origin.startsWith("http://localhost") ||
+        origin.startsWith("http://127.0.0.1") ||
+        origin.includes(".vercel.app")
+      ) {
+        return cb(null, true);
+      }
+
+      cb(new Error("Not allowed by CORS"), false);
+    },
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   });
-  
-  
-  
 
   // -------- PRISMA --------
   await app.register(prismaPlugin);
@@ -47,7 +52,6 @@ export async function buildApp() {
   app.register(communityRoutes);
   app.register(healthRoutes);
   app.register(userRoutes);
-
 
   return app;
 }
