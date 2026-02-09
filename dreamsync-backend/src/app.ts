@@ -1,17 +1,17 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
-import prismaPlugin from "./plugins/prisma";
+import prismaPlugin from "./plugins/prisma.js";
 
-import { interpretationRoutes } from "./modules/interpretation/interpretation.routes";
-import { authRoutes } from "./modules/auth/auth.routes";
-import { insightsRoutes } from "./modules/insights/insights.routes";
-import { reflectionRoutes } from "./modules/reflections/reflection.routes";
-import { dreamsRoutes } from "./modules/dreams/dreams.routes";
-import { statsRoutes } from "./modules/stats/stats.routes";
-import { communityRoutes } from "./modules/community/community.routes";
-import { yearlyArcRoutes } from "./modules/insights/yearlyArc.routes";
-import { dreamChaptersRoutes } from "./modules/insights/dreamChapters.routes";
-import { userRoutes } from "./modules/user/user.routes";
+import { interpretationRoutes } from "./modules/interpretation/interpretation.routes.js";
+import { authRoutes } from "./modules/auth/auth.routes.js";
+import { insightsRoutes } from "./modules/insights/insights.routes.js";
+import { reflectionRoutes } from "./modules/reflections/reflection.routes.js";
+import { dreamsRoutes } from "./modules/dreams/dreams.routes.js";
+import { statsRoutes } from "./modules/stats/stats.routes.js";
+import { communityRoutes } from "./modules/community/community.routes.js";
+import { yearlyArcRoutes } from "./modules/insights/yearlyArc.routes.js";
+import { dreamChaptersRoutes } from "./modules/insights/dreamChapters.routes.js";
+import { userRoutes } from "./modules/user/user.routes.js";
 
 export async function buildApp() {
   const app = Fastify({ logger: true });
@@ -34,7 +34,6 @@ export async function buildApp() {
   app.register(insightsRoutes);
   app.register(yearlyArcRoutes);
   app.register(dreamChaptersRoutes);
-  app.register(userRoutes);
   app.register(communityRoutes);
 
   return app;
