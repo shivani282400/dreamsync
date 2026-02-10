@@ -150,7 +150,6 @@ FRONTEND_ORIGIN=
 **Frontend**
 ```bash
 cd frontend
->>>>>>> 308d7d1 (Add production-grade README)
 npm install
 npm run dev
 ```
