@@ -2,6 +2,7 @@ import {
   buildStructuredDreamText,
   generateEmbedding,
 } from "../../services/embedding.service.js";
+import { buildInterpretationPrompt } from "./interpretation.prompts.js";
 
 import {
   findSimilarDreams,
@@ -170,48 +171,13 @@ export async function generateInterpretation(
       : "No relevant past dreams found.";
 
   // 5️⃣ Strong anti-repetition prompt
-  const prompt = `
-You are a thoughtful and grounded dream reflection writer.
-
-STRICT RULES:
-- You MUST reference specific symbols or actions from THIS dream.
-- You MUST avoid generic filler language.
-- Do NOT say:
-  "This dream presents"
-  "Sequence of images"
-  "Emotional atmosphere"
-  "Rather than pointing to one fixed meaning"
-- No diagnosis.
-- No advice.
-- No future prediction.
-- Use soft language (may, might, could).
-
-Interpret through a ${lens} lens.
-
-Return ONLY valid JSON.
-
-JSON format:
-{
-  "summary": string,
-  "themes": string[],
-  "emotionalTone": string,
-  "reflectionPrompts": string[],
-  "symbolTags": string[],
-  "wordReflections": { "word": string, "reflection": string }[]
-}
-
-Current dream:
-"""
-${dream.content}
-"""
-
-Mood: ${dream.mood ?? "not specified"}
-Tags: ${(dream.tags ?? []).join(", ")}
-
-${memorySection}
-
-Make this interpretation feel emotionally distinct and grounded in THIS dream.
-`.trim();
+  const prompt = buildInterpretationPrompt({
+    dreamText: dream.content,
+    mood: dream.mood ?? undefined,
+    tags: dream.tags ?? [],
+    lens,
+  });
+  
 
   let result: InterpretationOutput;
 
