@@ -2,10 +2,15 @@ import {
   buildStructuredDreamText,
   generateEmbedding,
 } from "../../services/embedding.service.js";
+
 import {
   findSimilarDreams,
   getDreamEmbedding,
 } from "../../services/vector.service.js";
+import {
+  isValidInterpretation,
+  isSafeInterpretation,
+} from "./interpretation.validators.js";
 import { generateInterpretationWithLLM } from "../../services/llm.service.js";
 import { PrismaClient } from "@prisma/client";
 
@@ -19,53 +24,54 @@ type InterpretationOutput = {
 };
 
 /**
- * Minimal fallback (only used if LLM completely fails)
+ * Cleaner fallback (no repetitive generic paragraph)
  */
 function fallbackInterpretation(): InterpretationOutput {
   return {
     summary:
-      "This dream contains images that may hold personal meaning. You might explore which part felt most emotionally vivid.",
-    themes: ["symbol", "emotion"],
-    emotionalTone: "neutral",
+      "Something in this dream stands out, but its meaning may still be unfolding. It might help to sit with the strongest image a little longer.",
+    themes: ["symbol", "reflection", "emotion"],
+    emotionalTone: "uncertain, contemplative",
     reflectionPrompts: [
-      "Which image felt strongest?",
-      "What emotion stayed with you?",
-      "Did anything feel familiar?",
-      "What part would you revisit?",
+      "Which image feels most vivid now?",
+      "Did anything surprise you in the dream?",
+      "What feeling lingered after waking?",
+      "Does anything in your current life feel similar in tone?",
     ],
-    symbolTags: ["dream"],
+    symbolTags: ["dream", "symbol", "reflection"],
     wordReflections: [
       {
         word: "image",
         reflection:
-          "Sometimes a single dream image can reflect something subtle happening beneath the surface.",
+          "Sometimes a single image carries more emotional weight than the entire storyline.",
       },
     ],
   };
 }
 
 /**
- * Soft validation (non-destructive)
+ * Summarize memory dreams for context contrast
  */
-function ensureStructure(output: any): InterpretationOutput {
-  return {
-    summary: output?.summary ?? "",
-    themes: Array.isArray(output?.themes) ? output.themes : [],
-    emotionalTone: output?.emotionalTone ?? "",
-    reflectionPrompts: Array.isArray(output?.reflectionPrompts)
-      ? output.reflectionPrompts
-      : [],
-    symbolTags: Array.isArray(output?.symbolTags)
-      ? output.symbolTags
-      : [],
-    wordReflections: Array.isArray(output?.wordReflections)
-      ? output.wordReflections
-      : [],
-  };
+function summarizeMemoryDream(dream: {
+  content: string;
+  mood?: string | null;
+  tags?: string[];
+}): string {
+  const text =
+    dream.content.length > 200
+      ? dream.content.slice(0, 200) + "..."
+      : dream.content;
+
+  const parts = [`Dream: ${text}`];
+
+  if (dream.mood) parts.push(`Mood: ${dream.mood}`);
+  if (dream.tags?.length) parts.push(`Tags: ${dream.tags.join(", ")}`);
+
+  return parts.join(" | ");
 }
 
 /**
- * Random interpretive lens
+ * Random interpretive lens to reduce repetition
  */
 function getRandomLens() {
   const lenses = ["symbolic", "emotional", "narrative", "memory-based"];
@@ -100,34 +106,76 @@ export async function generateInterpretation(
     return existing.content as InterpretationOutput;
   }
 
-  // 3️⃣ Embedding (optional)
+  // 3️⃣ Embedding
+  let dreamEmbedding: number[] | null = null;
+
   try {
-    const structuredText = buildStructuredDreamText({
-      title: dream.title,
-      content: dream.content,
-      mood: dream.mood ?? undefined,
-      tags: dream.tags ?? [],
-    });
-  
-    const embedding = await generateEmbedding(structuredText);
-  
-    if (embedding && Array.isArray(embedding)) {
-      await findSimilarDreams(input.userId, embedding, 3).catch(() => {});
+    dreamEmbedding = await getDreamEmbedding(input.userId, dream.id);
+
+    if (!dreamEmbedding) {
+      const structuredText = buildStructuredDreamText({
+        title: dream.title,
+        content: dream.content,
+        mood: dream.mood ?? undefined,
+        tags: dream.tags ?? [],
+      });
+
+      dreamEmbedding = await generateEmbedding(structuredText);
     }
   } catch {
-    console.warn("Embedding skipped.");
+    console.warn("Embedding unavailable, skipping semantic memory");
   }
-  
+
+  // 4️⃣ Memory retrieval
+  let memoryContext: string[] = [];
+
+  if (dreamEmbedding) {
+    try {
+      const similar = await findSimilarDreams(
+        input.userId,
+        dreamEmbedding,
+        5
+      );
+
+      const ids = similar
+        .map((s) => s.dreamId)
+        .filter((id) => id !== dream.id);
+
+      if (ids.length > 0) {
+        const memoryDreams = await prisma.dream.findMany({
+          where: {
+            id: { in: ids },
+            userId: input.userId,
+          },
+          select: {
+            content: true,
+            mood: true,
+            tags: true,
+          },
+        });
+
+        memoryContext = memoryDreams.map(summarizeMemoryDream);
+      }
+    } catch {
+      console.warn("Memory retrieval failed, continuing without context");
+    }
+  }
 
   const lens = getRandomLens();
 
-  // 4️⃣ Strong anti-generic prompt
+  const memorySection =
+    memoryContext.length > 0
+      ? `Relevant past dreams (for contrast only — do NOT repeat their meanings):
+- ${memoryContext.join("\n- ")}`
+      : "No relevant past dreams found.";
+
+  // 5️⃣ Strong anti-repetition prompt
   const prompt = `
-You are a grounded, emotionally intelligent dream reflection writer.
+You are a thoughtful and grounded dream reflection writer.
 
 STRICT RULES:
-- Reference specific elements from THIS dream.
-- Do NOT use generic filler phrases.
+- You MUST reference specific symbols or actions from THIS dream.
+- You MUST avoid generic filler language.
 - Do NOT say:
   "This dream presents"
   "Sequence of images"
@@ -135,6 +183,7 @@ STRICT RULES:
   "Rather than pointing to one fixed meaning"
 - No diagnosis.
 - No advice.
+- No future prediction.
 - Use soft language (may, might, could).
 
 Interpret through a ${lens} lens.
@@ -151,35 +200,40 @@ JSON format:
   "wordReflections": { "word": string, "reflection": string }[]
 }
 
-Dream:
+Current dream:
 """
 ${dream.content}
 """
 
 Mood: ${dream.mood ?? "not specified"}
-Tags: ${(dream.tags ?? []).join(", ") || "none"}
+Tags: ${(dream.tags ?? []).join(", ")}
 
-Make the interpretation feel specific and emotionally distinct.
+${memorySection}
+
+Make this interpretation feel emotionally distinct and grounded in THIS dream.
 `.trim();
 
-  let rawResult: any;
+  let result: InterpretationOutput;
 
   try {
-    rawResult = await generateInterpretationWithLLM(prompt, {
+    result = await generateInterpretationWithLLM(prompt, {
       temperature: 0.8,
       topP: 0.9,
     });
 
-    console.log("RAW LLM RESULT:", rawResult);
+    console.log("RAW LLM RESULT:", result);
   } catch (err) {
-    console.error("LLM call failed:", err);
-    return fallbackInterpretation();
+    console.warn("LLM unavailable. Using fallback.");
+    result = fallbackInterpretation();
   }
 
-  // 5️⃣ Soft structure enforcement
-  const result = ensureStructure(rawResult);
+  // 6️⃣ Strict validation (no silent fallback)
+  if (!isValidInterpretation(result) || !isSafeInterpretation(result)) {
+    console.error("Interpretation failed validation:", result);
+    throw new Error("Interpretation validation failed");
+  }
 
-  // 6️⃣ Persist
+  // 7️⃣ Persist
   await prisma.interpretation.create({
     data: {
       dreamId: dream.id,
