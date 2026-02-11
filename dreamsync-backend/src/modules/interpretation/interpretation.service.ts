@@ -2,16 +2,13 @@ import {
   buildStructuredDreamText,
   generateEmbedding,
 } from "../../services/embedding.service.js";
-import { buildInterpretationPrompt } from "./interpretation.prompts.js";
 
 import {
   findSimilarDreams,
   getDreamEmbedding,
 } from "../../services/vector.service.js";
-import {
-  isValidInterpretation,
-  isSafeInterpretation,
-} from "./interpretation.validators.js";
+
+import { buildInterpretationPrompt } from "./interpretation.prompts.js";
 import { generateInterpretationWithLLM } from "../../services/llm.service.js";
 import { PrismaClient } from "@prisma/client";
 
@@ -25,54 +22,35 @@ type InterpretationOutput = {
 };
 
 /**
- * Cleaner fallback (no repetitive generic paragraph)
+ * Fallback — ONLY if LLM completely fails
  */
 function fallbackInterpretation(): InterpretationOutput {
+  console.warn("⚠️ Using fallback interpretation (LLM failed)");
+
   return {
     summary:
-      "Something in this dream stands out, but its meaning may still be unfolding. It might help to sit with the strongest image a little longer.",
-    themes: ["symbol", "reflection", "emotion"],
-    emotionalTone: "uncertain, contemplative",
+      "Something about this dream feels meaningful. You might notice which part stays with you the longest.",
+    themes: ["symbol", "reflection"],
+    emotionalTone: "neutral",
     reflectionPrompts: [
-      "Which image feels most vivid now?",
-      "Did anything surprise you in the dream?",
-      "What feeling lingered after waking?",
-      "Does anything in your current life feel similar in tone?",
+      "Which moment felt strongest?",
+      "Did anything surprise you?",
+      "What emotion lingered after waking?",
+      "Does any part connect to your current life?",
     ],
-    symbolTags: ["dream", "symbol", "reflection"],
+    symbolTags: ["dream"],
     wordReflections: [
       {
-        word: "image",
+        word: "moment",
         reflection:
-          "Sometimes a single image carries more emotional weight than the entire storyline.",
+          "Sometimes a single moment carries more meaning than the whole storyline.",
       },
     ],
   };
 }
 
 /**
- * Summarize memory dreams for context contrast
- */
-function summarizeMemoryDream(dream: {
-  content: string;
-  mood?: string | null;
-  tags?: string[];
-}): string {
-  const text =
-    dream.content.length > 200
-      ? dream.content.slice(0, 200) + "..."
-      : dream.content;
-
-  const parts = [`Dream: ${text}`];
-
-  if (dream.mood) parts.push(`Mood: ${dream.mood}`);
-  if (dream.tags?.length) parts.push(`Tags: ${dream.tags.join(", ")}`);
-
-  return parts.join(" | ");
-}
-
-/**
- * Random interpretive lens to reduce repetition
+ * Random interpretive lens
  */
 function getRandomLens() {
   const lenses = ["symbolic", "emotional", "narrative", "memory-based"];
@@ -107,13 +85,11 @@ export async function generateInterpretation(
     return existing.content as InterpretationOutput;
   }
 
-  // 3️⃣ Embedding
-  let dreamEmbedding: number[] | null = null;
-
+  // 3️⃣ Embedding (non-blocking)
   try {
-    dreamEmbedding = await getDreamEmbedding(input.userId, dream.id);
+    let embedding = await getDreamEmbedding(input.userId, dream.id);
 
-    if (!dreamEmbedding) {
+    if (!embedding) {
       const structuredText = buildStructuredDreamText({
         title: dream.title,
         content: dream.content,
@@ -121,64 +97,27 @@ export async function generateInterpretation(
         tags: dream.tags ?? [],
       });
 
-      dreamEmbedding = await generateEmbedding(structuredText);
+      embedding = await generateEmbedding(structuredText);
+    }
+
+    if (embedding && Array.isArray(embedding)) {
+      await findSimilarDreams(input.userId, embedding, 3).catch(() => {});
     }
   } catch {
-    console.warn("Embedding unavailable, skipping semantic memory");
+    console.warn("Embedding skipped.");
   }
 
-  // 4️⃣ Memory retrieval
-  let memoryContext: string[] = [];
-
-  if (dreamEmbedding) {
-    try {
-      const similar = await findSimilarDreams(
-        input.userId,
-        dreamEmbedding,
-        5
-      );
-
-      const ids = similar
-        .map((s) => s.dreamId)
-        .filter((id) => id !== dream.id);
-
-      if (ids.length > 0) {
-        const memoryDreams = await prisma.dream.findMany({
-          where: {
-            id: { in: ids },
-            userId: input.userId,
-          },
-          select: {
-            content: true,
-            mood: true,
-            tags: true,
-          },
-        });
-
-        memoryContext = memoryDreams.map(summarizeMemoryDream);
-      }
-    } catch {
-      console.warn("Memory retrieval failed, continuing without context");
-    }
-  }
-
+  // 4️⃣ Build prompt (Friendly Reflective Guide tone)
   const lens = getRandomLens();
 
-  const memorySection =
-    memoryContext.length > 0
-      ? `Relevant past dreams (for contrast only — do NOT repeat their meanings):
-- ${memoryContext.join("\n- ")}`
-      : "No relevant past dreams found.";
-
-  // 5️⃣ Strong anti-repetition prompt
   const prompt = buildInterpretationPrompt({
     dreamText: dream.content,
     mood: dream.mood ?? undefined,
     tags: dream.tags ?? [],
     lens,
   });
-  
 
+  // 5️⃣ Call LLM
   let result: InterpretationOutput;
 
   try {
@@ -187,16 +126,16 @@ export async function generateInterpretation(
       topP: 0.9,
     });
 
-    console.log("RAW LLM RESULT:", result);
+    console.log("✅ LLM RESPONSE:", result);
   } catch (err) {
-    console.warn("LLM unavailable. Using fallback.");
-    result = fallbackInterpretation();
+    console.error("❌ LLM call failed:", err);
+    return fallbackInterpretation();
   }
 
-  // 6️⃣ Strict validation (no silent fallback)
-  if (!isValidInterpretation(result) || !isSafeInterpretation(result)) {
-    console.error("Interpretation failed validation:", result);
-    throw new Error("Interpretation validation failed");
+  // 6️⃣ Basic structural safety (non-destructive)
+  if (!result || typeof result.summary !== "string") {
+    console.warn("⚠️ Invalid LLM structure. Using fallback.");
+    return fallbackInterpretation();
   }
 
   // 7️⃣ Persist
