@@ -23,43 +23,26 @@ type InterpretationOutput = {
 };
 
 /**
- * Improved fallback interpretation (less generic)
+ * Cleaner fallback (no repetitive generic paragraph)
  */
 function fallbackInterpretation(): InterpretationOutput {
   return {
     summary:
-      "This dream presents a sequence of images that may reflect a shifting emotional atmosphere. Rather than pointing to one fixed meaning, it could be highlighting contrasts or tensions that are still unfolding.",
-    themes: ["imagery", "emotion", "contrast", "uncertainty"],
-    emotionalTone: "subtle, reflective",
+      "Something in this dream stands out, but its meaning may still be unfolding. It might help to sit with the strongest image a little longer.",
+    themes: ["symbol", "reflection", "emotion"],
+    emotionalTone: "uncertain, contemplative",
     reflectionPrompts: [
-      "Which image stayed with you the longest after waking?",
-      "Did any part of the dream feel familiar to your current life?",
-      "What emotion seemed strongest beneath the surface?",
-      "If the dream had a quiet message, what might it be nudging you toward noticing?",
+      "Which image feels most vivid now?",
+      "Did anything surprise you in the dream?",
+      "What feeling lingered after waking?",
+      "Does anything in your current life feel similar in tone?",
     ],
-    symbolTags: [
-      "imagery",
-      "emotion",
-      "contrast",
-      "awareness",
-      "reflection",
-      "symbol",
-    ],
+    symbolTags: ["dream", "symbol", "reflection"],
     wordReflections: [
-      {
-        word: "shift",
-        reflection:
-          "A sense of shifting may suggest something in your waking life that feels unsettled or in motion.",
-      },
       {
         word: "image",
         reflection:
-          "Dream images often act as emotional metaphors rather than literal scenes.",
-      },
-      {
-        word: "tone",
-        reflection:
-          "The tone of a dream can sometimes matter more than the events themselves.",
+          "Sometimes a single image carries more emotional weight than the entire storyline.",
       },
     ],
   };
@@ -87,7 +70,7 @@ function summarizeMemoryDream(dream: {
 }
 
 /**
- * Random interpretive lens to prevent repetition
+ * Random interpretive lens to reduce repetition
  */
 function getRandomLens() {
   const lenses = ["symbolic", "emotional", "narrative", "memory-based"];
@@ -122,7 +105,7 @@ export async function generateInterpretation(
     return existing.content as InterpretationOutput;
   }
 
-  // 3️⃣ Embedding (best effort)
+  // 3️⃣ Embedding
   let dreamEmbedding: number[] | null = null;
 
   try {
@@ -185,19 +168,24 @@ export async function generateInterpretation(
 - ${memoryContext.join("\n- ")}`
       : "No relevant past dreams found.";
 
-  // 5️⃣ Strong anti-repetition + lighter tone prompt
+  // 5️⃣ Strong anti-repetition prompt
   const prompt = `
-You are an empathetic dream reflection writer.
+You are a thoughtful and grounded dream reflection writer.
 
-CRITICAL RULES:
-- You MUST reference at least 2 concrete symbols or moments from the CURRENT dream.
-- You MUST explain what makes this dream emotionally distinct.
-- Avoid generic phrases like "subconscious", "inner processing", or "unresolved emotions".
-- No diagnosis. No advice. No future prediction.
+STRICT RULES:
+- You MUST reference specific symbols or actions from THIS dream.
+- You MUST avoid generic filler language.
+- Do NOT say:
+  "This dream presents"
+  "Sequence of images"
+  "Emotional atmosphere"
+  "Rather than pointing to one fixed meaning"
+- No diagnosis.
+- No advice.
+- No future prediction.
 - Use soft language (may, might, could).
-- Keep tone warm, human, and easy to read.
 
-Interpret primarily through a ${lens} lens.
+Interpret through a ${lens} lens.
 
 Return ONLY valid JSON.
 
@@ -221,29 +209,30 @@ Tags: ${(dream.tags ?? []).join(", ")}
 
 ${memorySection}
 
-Make this interpretation clearly different in tone or focus from past dreams.
+Make this interpretation feel emotionally distinct and grounded in THIS dream.
 `.trim();
 
-  // 6️⃣ Gemini call
   let result: InterpretationOutput;
 
   try {
     result = await generateInterpretationWithLLM(prompt, {
-      temperature: 0.7,
+      temperature: 0.8,
       topP: 0.9,
     });
-    
+
+    console.log("RAW LLM RESULT:", result);
   } catch (err) {
-    console.warn("Gemini unavailable. Using fallback.");
+    console.warn("LLM unavailable. Using fallback.");
     result = fallbackInterpretation();
   }
 
-  // 7️⃣ Hard validation
+  // 6️⃣ Strict validation (no silent fallback)
   if (!isValidInterpretation(result) || !isSafeInterpretation(result)) {
-    result = fallbackInterpretation();
+    console.error("Interpretation failed validation:", result);
+    throw new Error("Interpretation validation failed");
   }
 
-  // 8️⃣ Persist
+  // 7️⃣ Persist
   await prisma.interpretation.create({
     data: {
       dreamId: dream.id,

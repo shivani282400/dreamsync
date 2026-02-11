@@ -35,7 +35,7 @@ export async function generateInterpretationWithLLM(
   const model = client.getGenerativeModel({
     model: "gemini-1.5-flash",
     generationConfig: {
-      temperature: options?.temperature ?? 0.7,
+      temperature: options?.temperature ?? 0.8,
       topP: options?.topP ?? 0.9,
     },
   });
