@@ -1,16 +1,16 @@
 import {
   buildStructuredDreamText,
   generateEmbedding,
-} from "../../services/embedding.service.js"
+} from "../../services/embedding.service.js";
 import {
   findSimilarDreams,
   getDreamEmbedding,
-} from "../../services/vector.service.js"
+} from "../../services/vector.service.js";
 import {
   isValidInterpretation,
   isSafeInterpretation,
-} from "./interpretation.validators.js"
-import { generateInterpretationWithGemini } from "../../services/gemini.service.js"
+} from "./interpretation.validators.js";
+import { generateInterpretationWithLLM } from "../../services/llm.service.js";
 import { PrismaClient } from "@prisma/client";
 
 type InterpretationOutput = {
@@ -23,50 +23,50 @@ type InterpretationOutput = {
 };
 
 /**
- * Fallback interpretation (used when Gemini is unavailable)
+ * Improved fallback interpretation (less generic)
  */
 function fallbackInterpretation(): InterpretationOutput {
   return {
     summary:
-      "This dream feels like an inner processing space where impressions are still settling. It may be highlighting subtle feelings or questions that are not fully resolved yet.",
-    themes: ["reflection", "inner awareness", "transition", "uncertainty"],
-    emotionalTone: "quiet, contemplative",
+      "This dream presents a sequence of images that may reflect a shifting emotional atmosphere. Rather than pointing to one fixed meaning, it could be highlighting contrasts or tensions that are still unfolding.",
+    themes: ["imagery", "emotion", "contrast", "uncertainty"],
+    emotionalTone: "subtle, reflective",
     reflectionPrompts: [
-      "What part of the dream felt most emotionally charged?",
-      "Which image or moment lingered after waking?",
-      "If the dream had a message, what might it be asking you to notice?",
-      "Where do you feel a similar tone in your waking life lately?",
+      "Which image stayed with you the longest after waking?",
+      "Did any part of the dream feel familiar to your current life?",
+      "What emotion seemed strongest beneath the surface?",
+      "If the dream had a quiet message, what might it be nudging you toward noticing?",
     ],
     symbolTags: [
-      "processing",
-      "inner-world",
-      "transition",
-      "uncertainty",
-      "reflection",
+      "imagery",
       "emotion",
+      "contrast",
+      "awareness",
+      "reflection",
+      "symbol",
     ],
     wordReflections: [
       {
-        word: "moment",
+        word: "shift",
         reflection:
-          "The idea of a moment can point to something small yet important that wants your attention.",
+          "A sense of shifting may suggest something in your waking life that feels unsettled or in motion.",
       },
       {
-        word: "settling",
+        word: "image",
         reflection:
-          "Settling suggests emotions or thoughts finding their place after a period of movement.",
+          "Dream images often act as emotional metaphors rather than literal scenes.",
       },
       {
-        word: "question",
+        word: "tone",
         reflection:
-          "A question in a dream often hints at curiosity, a decision point, or a gentle uncertainty.",
+          "The tone of a dream can sometimes matter more than the events themselves.",
       },
     ],
   };
 }
 
 /**
- * Reduce past dreams into short memory summaries
+ * Summarize memory dreams for context contrast
  */
 function summarizeMemoryDream(dream: {
   content: string;
@@ -86,13 +86,21 @@ function summarizeMemoryDream(dream: {
   return parts.join(" | ");
 }
 
+/**
+ * Random interpretive lens to prevent repetition
+ */
+function getRandomLens() {
+  const lenses = ["symbolic", "emotional", "narrative", "memory-based"];
+  return lenses[Math.floor(Math.random() * lenses.length)];
+}
+
 export async function generateInterpretation(
   prisma: PrismaClient,
   input: {
-  userId: string;
-  dreamId: string;
-}): Promise<InterpretationOutput> {
-
+    userId: string;
+    dreamId: string;
+  }
+): Promise<InterpretationOutput> {
   // 1️⃣ Verify ownership
   const dream = await prisma.dream.findFirst({
     where: {
@@ -114,7 +122,7 @@ export async function generateInterpretation(
     return existing.content as InterpretationOutput;
   }
 
-  // 3️⃣ Embedding (best-effort)
+  // 3️⃣ Embedding (best effort)
   let dreamEmbedding: number[] | null = null;
 
   try {
@@ -169,51 +177,68 @@ export async function generateInterpretation(
     }
   }
 
-  // 5️⃣ Prompt
+  const lens = getRandomLens();
+
   const memorySection =
     memoryContext.length > 0
-      ? `Relevant past dreams:\n- ${memoryContext.join("\n- ")}`
+      ? `Relevant past dreams (for contrast only — do NOT repeat their meanings):
+- ${memoryContext.join("\n- ")}`
       : "No relevant past dreams found.";
 
+  // 5️⃣ Strong anti-repetition + lighter tone prompt
   const prompt = `
-You are a reflective dream analysis assistant.
-Your tone is calm, grounded, and psychologically aware.
-Do not diagnose. Do not predict the future. Do not give advice.
-Offer symbolic interpretations and gentle reflective questions only.
-Avoid authoritative claims; use soft language (e.g., "may," "might," "could").
+You are an empathetic dream reflection writer.
 
-Output rules:
-- Return ONLY valid JSON (no markdown, no extra text).
-- Keep each field concise but meaningful.
-- No medical, legal, or deterministic claims.
+CRITICAL RULES:
+- You MUST reference at least 2 concrete symbols or moments from the CURRENT dream.
+- You MUST explain what makes this dream emotionally distinct.
+- Avoid generic phrases like "subconscious", "inner processing", or "unresolved emotions".
+- No diagnosis. No advice. No future prediction.
+- Use soft language (may, might, could).
+- Keep tone warm, human, and easy to read.
+
+Interpret primarily through a ${lens} lens.
+
+Return ONLY valid JSON.
 
 JSON format:
 {
-  "summary": string, // 2-4 sentences, reflective and nuanced
-  "themes": string[], // 4-7 short noun phrases
-  "emotionalTone": string, // 1-3 words
-  "reflectionPrompts": string[], // 4-6 gentle questions
-  "symbolTags": string[], // 6-12 lowercase tags, 1-2 words each
-  "wordReflections": { "word": string, "reflection": string }[] // 4-8 items, word = 1-3 words from the dream, reflection = 1-2 sentences
+  "summary": string,
+  "themes": string[],
+  "emotionalTone": string,
+  "reflectionPrompts": string[],
+  "symbolTags": string[],
+  "wordReflections": { "word": string, "reflection": string }[]
 }
 
 Current dream:
+"""
 ${dream.content}
+"""
+
+Mood: ${dream.mood ?? "not specified"}
+Tags: ${(dream.tags ?? []).join(", ")}
 
 ${memorySection}
+
+Make this interpretation clearly different in tone or focus from past dreams.
 `.trim();
 
-  // 6️⃣ Gemini call with HARD fallback
+  // 6️⃣ Gemini call
   let result: InterpretationOutput;
 
   try {
-    result = await generateInterpretationWithGemini(prompt);
+    result = await generateInterpretationWithLLM(prompt, {
+      temperature: 0.7,
+      topP: 0.9,
+    });
+    
   } catch (err) {
-    console.warn("Gemini unavailable. Using fallback interpretation.");
+    console.warn("Gemini unavailable. Using fallback.");
     result = fallbackInterpretation();
   }
 
-  // 7️⃣ HARD VALIDATION
+  // 7️⃣ Hard validation
   if (!isValidInterpretation(result) || !isSafeInterpretation(result)) {
     result = fallbackInterpretation();
   }
