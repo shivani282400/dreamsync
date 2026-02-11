@@ -23,23 +23,25 @@ export default function Interpretation() {
 
   useEffect(() => {
     if (!dreamId) return;
-
+  
+    const id = dreamId; // 🔥 type is now narrowed to string
+  
     async function load() {
       try {
         setLoading(true);
         setError(null);
-
-        let fetched = await getDreamById(dreamId);
-
+  
+        let fetched = await getDreamById(id);
+  
         if (!fetched.dream?.interpretation) {
-          await interpretDream(dreamId);
-          fetched = await getDreamById(dreamId);
+          await interpretDream(id);
+          fetched = await getDreamById(id);
         }
-
+  
         setDream(fetched.dream);
-
+  
         try {
-          const existingReflections = await getDreamReflections(dreamId);
+          const existingReflections = await getDreamReflections(id);
           setReflections(existingReflections);
         } catch {
           setReflections([]);
@@ -50,9 +52,10 @@ export default function Interpretation() {
         setLoading(false);
       }
     }
-
+  
     load();
   }, [dreamId]);
+  
 
   const reflectionMap = useMemo(() => {
     const map = new Map<string, DreamReflection>();
