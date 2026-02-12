@@ -1,4 +1,4 @@
-console.log("ENV CHECK:", process.env.GROQ_API_KEY ? "FOUND" : "MISSING");
+console.log("SERVER STARTED");
 
 
 import "dotenv/config";
