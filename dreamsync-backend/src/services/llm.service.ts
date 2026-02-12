@@ -29,6 +29,11 @@ export type LLMInterpretationResult =
   | { ok: true; data: InterpretationOutput; rawText: string }
   | { ok: false; error: string; rawText: string };
 
+// Generic JSON result for non-interpretation flows (e.g., reflection rewrites).
+export type LLMJsonResult<T = unknown> =
+  | { ok: true; data: T; rawText: string }
+  | { ok: false; error: string; rawText: string };
+
 export async function generateInterpretationWithLLM(
   prompt: string,
   options?: LLMOptions
@@ -110,4 +115,62 @@ ${prompt}
     data: parsed as InterpretationOutput,
     rawText: raw,
   };
+}
+
+/**
+ * Generic JSON helper
+ * Use when the prompt already describes the JSON schema (e.g., reflection rewrites).
+ */
+export async function generateJsonWithLLM<T = unknown>(
+  prompt: string,
+  options?: LLMOptions
+): Promise<LLMJsonResult<T>> {
+  const client = getGeminiClient();
+
+  if (!client) {
+    return {
+      ok: false,
+      error: "GEMINI_API_KEY not configured",
+      rawText: "",
+    };
+  }
+
+  const model = client.getGenerativeModel({
+    model: "gemini-1.5-flash",
+    generationConfig: {
+      temperature: options?.temperature ?? 0.8,
+      topP: options?.topP ?? 0.9,
+    },
+  });
+
+  const result = await model.generateContent(prompt.trim());
+  const raw = result.response.text()?.trim() ?? "";
+
+  if (!raw) {
+    return { ok: false, error: "Empty response from LLM", rawText: "" };
+  }
+
+  const start = raw.indexOf("{");
+  const end = raw.lastIndexOf("}");
+
+  if (start === -1 || end === -1) {
+    return {
+      ok: false,
+      error: "LLM did not return JSON",
+      rawText: raw,
+    };
+  }
+
+  const jsonString = raw.slice(start, end + 1);
+
+  try {
+    const parsed = JSON.parse(jsonString) as T;
+    return { ok: true, data: parsed, rawText: raw };
+  } catch {
+    return {
+      ok: false,
+      error: "LLM returned invalid JSON",
+      rawText: raw,
+    };
+  }
 }

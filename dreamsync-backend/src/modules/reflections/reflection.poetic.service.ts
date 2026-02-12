@@ -1,5 +1,5 @@
 import { buildPoeticRewritePrompt } from "./reflection.prompts.js"
-import { generateInterpretationWithLLM } from "../../services/llm.service.js"
+import { generateJsonWithLLM } from "../../services/llm.service.js"
 import type { Reflection } from "./reflection.types.js"
 
 export async function rewriteReflectionPoetically(
@@ -8,23 +8,25 @@ export async function rewriteReflectionPoetically(
   try {
     const prompt = buildPoeticRewritePrompt(reflection);
 
-    // IMPORTANT:
-    // We expect the LLM to return the SAME shape as Reflection
-    const rewritten = await generateInterpretationWithLLM(prompt) as unknown;
+    // Fix: use generic JSON helper so the prompt-defined schema is preserved.
+    const rewritten = await generateJsonWithLLM<Reflection>(prompt);
 
-    if (
-      typeof rewritten === "object" &&
-      rewritten !== null &&
-      "title" in rewritten &&
-      "summary" in rewritten &&
-      "highlights" in rewritten &&
-      Array.isArray((rewritten as any).highlights)
-    ) {
-      return {
-        title: (rewritten as any).title,
-        summary: (rewritten as any).summary,
-        highlights: (rewritten as any).highlights,
-      };
+    if (rewritten.ok) {
+      const data = rewritten.data as unknown;
+      if (
+        typeof data === "object" &&
+        data !== null &&
+        "title" in data &&
+        "summary" in data &&
+        "highlights" in data &&
+        Array.isArray((data as any).highlights)
+      ) {
+        return {
+          title: (data as any).title,
+          summary: (data as any).summary,
+          highlights: (data as any).highlights,
+        };
+      }
     }
 
     // Fallback if shape is wrong
