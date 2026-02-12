@@ -1,3 +1,6 @@
+console.log("ENV CHECK:", process.env.GROQ_API_KEY ? "FOUND" : "MISSING");
+
+
 import "dotenv/config";
 import { buildApp } from "./app.js";
 
