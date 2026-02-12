@@ -9,8 +9,15 @@ import {
 } from "../../services/vector.service.js";
 
 import { buildInterpretationPrompt } from "./interpretation.prompts.js";
-import { generateInterpretationWithLLM } from "../../services/llm.service.js";
+import {
+  generateInterpretationWithLLM,
+} from "../../services/llm.service.js";
 import { PrismaClient } from "@prisma/client";
+import {
+  isSafeInterpretation,
+  isValidInterpretation,
+  normalizeInterpretation,
+} from "./interpretation.validators.js";
 
 type InterpretationOutput = {
   summary: string;
@@ -29,21 +36,20 @@ function fallbackInterpretation(): InterpretationOutput {
 
   return {
     summary:
-      "Something about this dream feels meaningful. You might notice which part stays with you the longest.",
-    themes: ["symbol", "reflection"],
+      "There is a piece of this dream that stands out; it might help to notice which image or moment feels the most vivid.",
+    themes: ["curiosity", "reflection"],
     emotionalTone: "neutral",
     reflectionPrompts: [
-      "Which moment felt strongest?",
-      "Did anything surprise you?",
-      "What emotion lingered after waking?",
-      "Does any part connect to your current life?",
+      "Which moment is the easiest to recall?",
+      "What feeling followed you after waking?",
+      "Is there a small detail that feels oddly important?",
     ],
     symbolTags: ["dream"],
     wordReflections: [
       {
         word: "moment",
         reflection:
-          "Sometimes a single moment carries more meaning than the whole storyline.",
+          "A single image can hold more weight than the full storyline.",
       },
     ],
   };
@@ -82,7 +88,11 @@ export async function generateInterpretation(
   });
 
   if (existing) {
-    return existing.content as InterpretationOutput;
+    const content = existing.content as InterpretationOutput;
+    // If an older run stored malformed or fallback output, regenerate instead of repeating it.
+    if (content && isValidInterpretation(content)) {
+      return content;
+    }
   }
 
   // 3️⃣ Embedding (non-blocking)
@@ -118,33 +128,50 @@ export async function generateInterpretation(
   });
 
   // 5️⃣ Call LLM
-  let result: InterpretationOutput;
+  let result: InterpretationOutput | null = null;
 
   try {
-    result = await generateInterpretationWithLLM(prompt, {
+    const llm = await generateInterpretationWithLLM(prompt, {
       temperature: 0.8,
       topP: 0.9,
     });
 
-    console.log("✅ LLM RESPONSE:", result);
+    if (llm.ok) {
+      result = normalizeInterpretation(llm.data);
+    } else {
+      console.warn("⚠️ LLM error:", llm.error);
+    }
   } catch (err) {
+    // LLM should rarely throw now; keep a guard just in case.
     console.error("❌ LLM call failed:", err);
-    return fallbackInterpretation();
   }
 
-  // 6️⃣ Basic structural safety (non-destructive)
-  if (!result || typeof result.summary !== "string") {
-    console.warn("⚠️ Invalid LLM structure. Using fallback.");
-    return fallbackInterpretation();
+  // 6️⃣ Soft validation and safety gating
+  if (result && !isSafeInterpretation(result)) {
+    console.warn("⚠️ Unsafe interpretation detected. Falling back.");
+    result = null;
+  }
+
+  if (!result) {
+    // Only use fallback when we truly cannot recover any usable output.
+    result = fallbackInterpretation();
   }
 
   // 7️⃣ Persist
-  await prisma.interpretation.create({
-    data: {
-      dreamId: dream.id,
-      content: result,
-    },
-  });
+  if (existing) {
+    // Update instead of create to avoid unique constraint violations on dreamId.
+    await prisma.interpretation.update({
+      where: { id: existing.id },
+      data: { content: result },
+    });
+  } else {
+    await prisma.interpretation.create({
+      data: {
+        dreamId: dream.id,
+        content: result,
+      },
+    });
+  }
 
   return result;
 }

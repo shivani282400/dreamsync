@@ -1,5 +1,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { InterpretationOutput } from "../modules/interpretation/interpretation.types.js";
+import {
+  InterpretationOutput,
+} from "../modules/interpretation/interpretation.types.js";
 
 let gemini: GoogleGenerativeAI | null = null;
 
@@ -22,14 +24,23 @@ type LLMOptions = {
  * Main LLM abstraction for DreamSync
  * Currently powered by Gemini
  */
+// Return a discriminated union so callers can avoid throwing/fallback on partial failures.
+export type LLMInterpretationResult =
+  | { ok: true; data: InterpretationOutput; rawText: string }
+  | { ok: false; error: string; rawText: string };
+
 export async function generateInterpretationWithLLM(
   prompt: string,
   options?: LLMOptions
-): Promise<InterpretationOutput> {
+): Promise<LLMInterpretationResult> {
   const client = getGeminiClient();
 
   if (!client) {
-    throw new Error("GEMINI_API_KEY not configured");
+    return {
+      ok: false,
+      error: "GEMINI_API_KEY not configured",
+      rawText: "",
+    };
   }
 
   const model = client.getGenerativeModel({
@@ -40,7 +51,9 @@ export async function generateInterpretationWithLLM(
     },
   });
 
-  const result = await model.generateContent(`
+  // Force a single JSON object to reduce parsing/fallback churn.
+  const result = await model.generateContent(
+    `
 Return ONLY valid JSON.
 Do NOT include markdown.
 Do NOT include commentary.
@@ -53,16 +66,17 @@ The JSON must match this exact structure:
   "emotionalTone": string,
   "reflectionPrompts": string[],
   "symbolTags": string[],
-  "wordReflections": { "word": string, "reflection": string }[]
+  "wordReflections": [{ "word": string, "reflection": string }]
 }
 
 ${prompt}
-`.trim());
+`.trim()
+  );
 
-  const raw = result.response.text()?.trim();
+  const raw = result.response.text()?.trim() ?? "";
 
   if (!raw) {
-    throw new Error("Empty response from LLM");
+    return { ok: false, error: "Empty response from LLM", rawText: "" };
   }
 
   // Safer JSON extraction
@@ -70,7 +84,11 @@ ${prompt}
   const end = raw.lastIndexOf("}");
 
   if (start === -1 || end === -1) {
-    throw new Error("LLM did not return JSON");
+    return {
+      ok: false,
+      error: "LLM did not return JSON",
+      rawText: raw,
+    };
   }
 
   const jsonString = raw.slice(start, end + 1);
@@ -79,10 +97,17 @@ ${prompt}
 
   try {
     parsed = JSON.parse(jsonString);
-  } catch (err) {
-    console.error("Raw LLM output:", raw);
-    throw new Error("LLM returned invalid JSON");
+  } catch {
+    return {
+      ok: false,
+      error: "LLM returned invalid JSON",
+      rawText: raw,
+    };
   }
 
-  return parsed as InterpretationOutput;
+  return {
+    ok: true,
+    data: parsed as InterpretationOutput,
+    rawText: raw,
+  };
 }

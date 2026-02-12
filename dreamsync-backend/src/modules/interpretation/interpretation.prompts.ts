@@ -6,6 +6,7 @@ export function buildInterpretationPrompt(params: {
 }) {
   const { dreamText, mood, tags, lens } = params;
 
+  // The LLM now returns JSON, so the prompt must describe fields instead of a fixed text format.
   return `
 You are a friendly and emotionally intelligent dream reflection guide.
 
@@ -23,6 +24,9 @@ Guidelines:
 - Avoid psychological jargon or abstract filler phrases.
 - Do not sound mystical or dramatic.
 - Do not ask the user for clarification.
+- Avoid repeating the same phrases or sentence shapes.
+- Mention each concrete symbol or detail only once.
+- Remove generic, reusable text; make this unique to the dream.
 
 Interpret primarily through a ${lens ?? "symbolic"} lens.
 
@@ -34,21 +38,14 @@ ${dreamText}
 Mood: ${mood ?? "not specified"}
 Tags: ${(tags ?? []).join(", ") || "none"}
 
-Respond in EXACTLY this format:
+Write content for these JSON fields:
+- summary: 2–3 sentences grounded in this dream, friendly and calm.
+- themes: 3–5 short phrases capturing emotional or narrative threads.
+- emotionalTone: 1 sentence that reflects the mood if provided.
+- reflectionPrompts: 3 open-ended questions that feel personal, not generic.
+- symbolTags: 3–6 specific symbols or motifs from the dream.
+- wordReflections: 1–2 entries, each a { word, reflection } pair tied to a single word.
 
-Standout moment:
-(1–2 sentences grounded in specific dream details)
-
-What it might mean:
-(2–3 short sentences directly tied to this dream only)
-
-Emotional tone:
-(1 sentence that gently connects to the mood if available)
-
-A gentle question:
-(1 open-ended reflective question)
-
-Total length: 110–150 words.
-Make it feel like a thoughtful friend reflecting with the dreamer.
+Keep total length 110–150 words. Make it feel like a thoughtful friend reflecting with the dreamer.
 `;
 }

@@ -86,6 +86,9 @@ export type Dream = {
       themes: string[];
       emotionalTone: string;
       reflectionPrompts: string[];
+      // Include additional fields returned by the backend to avoid structural mismatches.
+      symbolTags?: string[];
+      wordReflections?: { word: string; reflection: string }[];
     };
   } | null;
 };
