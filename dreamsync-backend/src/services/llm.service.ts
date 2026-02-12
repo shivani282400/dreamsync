@@ -1,68 +1,39 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
-import {
-  InterpretationOutput,
-} from "../modules/interpretation/interpretation.types.js";
+import Groq from "groq-sdk";
+import { InterpretationOutput } from "../modules/interpretation/interpretation.types.js";
 
-let gemini: GoogleGenerativeAI | null = null;
+let groq: Groq | null = null;
 
-function getGeminiClient(): GoogleGenerativeAI | null {
-  if (!process.env.GEMINI_API_KEY) return null;
-
-  if (!gemini) {
-    gemini = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+function getGroqClient(): Groq {
+  if (!process.env.GROQ_API_KEY) {
+    // Fix: explicit error for missing key, no silent fallback.
+    throw new Error("Groq API key not configured");
   }
 
-  return gemini;
+  if (!groq) {
+    groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+  }
+
+  return groq;
 }
 
 type LLMOptions = {
   temperature?: number;
-  topP?: number;
 };
 
 /**
  * Main LLM abstraction for DreamSync
- * Currently powered by Gemini
+ * Currently powered by Groq (Llama 3 8B)
  */
-// Return a discriminated union so callers can avoid throwing/fallback on partial failures.
-export type LLMInterpretationResult =
-  | { ok: true; data: InterpretationOutput; rawText: string }
-  | { ok: false; error: string; rawText: string };
-
-// Generic JSON result for non-interpretation flows (e.g., reflection rewrites).
-export type LLMJsonResult<T = unknown> =
-  | { ok: true; data: T; rawText: string }
-  | { ok: false; error: string; rawText: string };
-
 export async function generateInterpretationWithLLM(
   prompt: string,
   options?: LLMOptions
-): Promise<LLMInterpretationResult> {
-  const client = getGeminiClient();
+): Promise<InterpretationOutput> {
+  const client = getGroqClient();
 
-  if (!client) {
-    return {
-      ok: false,
-      error: "GEMINI_API_KEY not configured",
-      rawText: "",
-    };
-  }
-
-  const model = client.getGenerativeModel({
-    model: "gemini-1.5-flash",
-    generationConfig: {
-      temperature: options?.temperature ?? 0.8,
-      topP: options?.topP ?? 0.9,
-    },
-  });
-
-  // Force a single JSON object to reduce parsing/fallback churn.
-  const result = await model.generateContent(
-    `
+  const system = `
 Return ONLY valid JSON.
-Do NOT include markdown.
-Do NOT include commentary.
-Do NOT include code blocks.
+No markdown.
+No commentary.
 
 The JSON must match this exact structure:
 {
@@ -73,48 +44,37 @@ The JSON must match this exact structure:
   "symbolTags": string[],
   "wordReflections": [{ "word": string, "reflection": string }]
 }
+  `.trim();
 
-${prompt}
-`.trim()
-  );
+  const response = await client.chat.completions.create({
+    model: "llama3-8b-8192",
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: prompt },
+    ],
+    temperature: options?.temperature ?? 0.8,
+  });
 
-  const raw = result.response.text()?.trim() ?? "";
+  const raw = response.choices?.[0]?.message?.content?.trim() ?? "";
 
   if (!raw) {
-    return { ok: false, error: "Empty response from LLM", rawText: "" };
+    throw new Error("Empty response from LLM");
   }
 
-  // Safer JSON extraction
   const start = raw.indexOf("{");
   const end = raw.lastIndexOf("}");
 
   if (start === -1 || end === -1) {
-    return {
-      ok: false,
-      error: "LLM did not return JSON",
-      rawText: raw,
-    };
+    throw new Error("LLM did not return JSON");
   }
 
   const jsonString = raw.slice(start, end + 1);
 
-  let parsed: unknown;
-
   try {
-    parsed = JSON.parse(jsonString);
+    return JSON.parse(jsonString) as InterpretationOutput;
   } catch {
-    return {
-      ok: false,
-      error: "LLM returned invalid JSON",
-      rawText: raw,
-    };
+    throw new Error("LLM returned invalid JSON");
   }
-
-  return {
-    ok: true,
-    data: parsed as InterpretationOutput,
-    rawText: raw,
-  };
 }
 
 /**
@@ -124,53 +84,36 @@ ${prompt}
 export async function generateJsonWithLLM<T = unknown>(
   prompt: string,
   options?: LLMOptions
-): Promise<LLMJsonResult<T>> {
-  const client = getGeminiClient();
+): Promise<T> {
+  const client = getGroqClient();
 
-  if (!client) {
-    return {
-      ok: false,
-      error: "GEMINI_API_KEY not configured",
-      rawText: "",
-    };
-  }
-
-  const model = client.getGenerativeModel({
-    model: "gemini-1.5-flash",
-    generationConfig: {
-      temperature: options?.temperature ?? 0.8,
-      topP: options?.topP ?? 0.9,
-    },
+  const response = await client.chat.completions.create({
+    model: "llama3-8b-8192",
+    messages: [
+      { role: "system", content: "Return ONLY valid JSON. No markdown. No commentary." },
+      { role: "user", content: prompt.trim() },
+    ],
+    temperature: options?.temperature ?? 0.8,
   });
 
-  const result = await model.generateContent(prompt.trim());
-  const raw = result.response.text()?.trim() ?? "";
+  const raw = response.choices?.[0]?.message?.content?.trim() ?? "";
 
   if (!raw) {
-    return { ok: false, error: "Empty response from LLM", rawText: "" };
+    throw new Error("Empty response from LLM");
   }
 
   const start = raw.indexOf("{");
   const end = raw.lastIndexOf("}");
 
   if (start === -1 || end === -1) {
-    return {
-      ok: false,
-      error: "LLM did not return JSON",
-      rawText: raw,
-    };
+    throw new Error("LLM did not return JSON");
   }
 
   const jsonString = raw.slice(start, end + 1);
 
   try {
-    const parsed = JSON.parse(jsonString) as T;
-    return { ok: true, data: parsed, rawText: raw };
+    return JSON.parse(jsonString) as T;
   } catch {
-    return {
-      ok: false,
-      error: "LLM returned invalid JSON",
-      rawText: raw,
-    };
+    throw new Error("LLM returned invalid JSON");
   }
 }

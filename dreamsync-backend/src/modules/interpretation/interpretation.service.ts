@@ -9,15 +9,9 @@ import {
 } from "../../services/vector.service.js";
 
 import { buildInterpretationPrompt } from "./interpretation.prompts.js";
-import {
-  generateInterpretationWithLLM,
-} from "../../services/llm.service.js";
+import { generateInterpretationWithLLM } from "../../services/llm.service.js";
 import { PrismaClient } from "@prisma/client";
-import {
-  isSafeInterpretation,
-  isValidInterpretation,
-  normalizeInterpretation,
-} from "./interpretation.validators.js";
+import { normalizeInterpretation } from "./interpretation.validators.js";
 
 type InterpretationOutput = {
   summary: string;
@@ -35,23 +29,12 @@ function fallbackInterpretation(): InterpretationOutput {
   console.warn("⚠️ Using fallback interpretation (LLM failed)");
 
   return {
-    summary:
-      "There is a piece of this dream that stands out; it might help to notice which image or moment feels the most vivid.",
-    themes: ["curiosity", "reflection"],
-    emotionalTone: "neutral",
-    reflectionPrompts: [
-      "Which moment is the easiest to recall?",
-      "What feeling followed you after waking?",
-      "Is there a small detail that feels oddly important?",
-    ],
-    symbolTags: ["dream"],
-    wordReflections: [
-      {
-        word: "moment",
-        reflection:
-          "A single image can hold more weight than the full storyline.",
-      },
-    ],
+    summary: "Interpretation could not be generated at this time.",
+    themes: [],
+    emotionalTone: "",
+    reflectionPrompts: [],
+    symbolTags: [],
+    wordReflections: [],
   };
 }
 
@@ -68,6 +51,7 @@ export async function generateInterpretation(
   input: {
     userId: string;
     dreamId: string;
+    forceRegenerate?: boolean;
   }
 ): Promise<InterpretationOutput> {
   // 1️⃣ Verify ownership
@@ -82,17 +66,14 @@ export async function generateInterpretation(
     throw new Error("Dream not found or access denied");
   }
 
-  // 2️⃣ Idempotency
+  // 2️⃣ Idempotency (never reuse stale content unless explicitly allowed)
   const existing = await prisma.interpretation.findUnique({
     where: { dreamId: dream.id },
   });
 
-  if (existing) {
-    const content = existing.content as InterpretationOutput;
-    // If an older run stored malformed or fallback output, regenerate instead of repeating it.
-    if (content && isValidInterpretation(content)) {
-      return content;
-    }
+  const forceRegenerate = input.forceRegenerate ?? true;
+  if (existing && !forceRegenerate) {
+    return existing.content as InterpretationOutput;
   }
 
   // 3️⃣ Embedding (non-blocking)
@@ -133,23 +114,16 @@ export async function generateInterpretation(
   try {
     const llm = await generateInterpretationWithLLM(prompt, {
       temperature: 0.8,
-      topP: 0.9,
     });
 
-    if (llm.ok) {
-      result = normalizeInterpretation(llm.data);
-    } else {
-      console.warn("⚠️ LLM error:", llm.error);
-    }
+    result = normalizeInterpretation(llm);
   } catch (err) {
-    // LLM should rarely throw now; keep a guard just in case.
+    const message = err instanceof Error ? err.message : String(err);
     console.error("❌ LLM call failed:", err);
-  }
-
-  // 6️⃣ Soft validation and safety gating
-  if (result && !isSafeInterpretation(result)) {
-    console.warn("⚠️ Unsafe interpretation detected. Falling back.");
-    result = null;
+    // Explicitly surface missing API key instead of falling back.
+    if (message.includes("Groq API key not configured")) {
+      throw err;
+    }
   }
 
   if (!result) {

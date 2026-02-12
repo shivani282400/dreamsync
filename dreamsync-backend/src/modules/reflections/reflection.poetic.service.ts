@@ -11,22 +11,19 @@ export async function rewriteReflectionPoetically(
     // Fix: use generic JSON helper so the prompt-defined schema is preserved.
     const rewritten = await generateJsonWithLLM<Reflection>(prompt);
 
-    if (rewritten.ok) {
-      const data = rewritten.data as unknown;
-      if (
-        typeof data === "object" &&
-        data !== null &&
-        "title" in data &&
-        "summary" in data &&
-        "highlights" in data &&
-        Array.isArray((data as any).highlights)
-      ) {
-        return {
-          title: (data as any).title,
-          summary: (data as any).summary,
-          highlights: (data as any).highlights,
-        };
-      }
+    if (
+      typeof rewritten === "object" &&
+      rewritten !== null &&
+      "title" in rewritten &&
+      "summary" in rewritten &&
+      "highlights" in rewritten &&
+      Array.isArray((rewritten as any).highlights)
+    ) {
+      return {
+        title: (rewritten as any).title,
+        summary: (rewritten as any).summary,
+        highlights: (rewritten as any).highlights,
+      };
     }
 
     // Fallback if shape is wrong
