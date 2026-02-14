@@ -3,22 +3,24 @@ import { buildApp } from "./app.js";
 
 async function start() {
   const portRaw = process.env.PORT?.trim();
-  const port = portRaw ? Number(portRaw) : NaN;
+  const port =
+    portRaw && !Number.isNaN(Number(portRaw))
+      ? Number(portRaw)
+      : 3000; // local fallback
+
   const hasGroqKey = Boolean(process.env.GROQ_API_KEY?.trim());
   const hasDatabaseUrl = Boolean(process.env.DATABASE_URL?.trim());
   const hasJwtSecret = Boolean(process.env.JWT_SECRET?.trim());
 
-  console.log(`[startup] PORT=${portRaw ?? ""}`);
+  console.log(`[startup] PORT=${port}`);
   console.log(`[startup] GROQ_API_KEY=${hasGroqKey ? "present" : "missing"}`);
   console.log(`[startup] DATABASE_URL=${hasDatabaseUrl ? "present" : "missing"}`);
   console.log(`[startup] JWT_SECRET=${hasJwtSecret ? "present" : "missing"}`);
 
-  if (!portRaw || Number.isNaN(port) || port <= 0) {
-    throw new Error("PORT not configured or invalid");
-  }
   if (!hasDatabaseUrl) {
     throw new Error("DATABASE_URL not configured");
   }
+
   if (!hasJwtSecret) {
     throw new Error("JWT_SECRET not configured");
   }
