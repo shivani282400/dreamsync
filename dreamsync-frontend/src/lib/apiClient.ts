@@ -1,4 +1,4 @@
-import { API_BASE_URL } from "../config/api";
+import { buildApiUrl } from "../config/api";
 import { getAuthToken } from "./authToken";
 
 
@@ -18,8 +18,8 @@ export async function apiFetch(
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  // ✅ SAFE URL CONSTRUCTION (FIXES DOUBLE https:// BUG)
-  const url = new URL(path, API_BASE_URL).toString();
+  // ✅ Safe URL construction via helper to avoid malformed concatenation.
+  const url = buildApiUrl(path);
 
   const response = await fetch(url, {
     ...options,
