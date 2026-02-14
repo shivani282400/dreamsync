@@ -8,12 +8,14 @@ async function start() {
       ? Number(portRaw)
       : 3000; // local fallback
 
-  const hasGroqKey = Boolean(process.env.GROQ_API_KEY?.trim());
+  const hasGeminiKey = Boolean(process.env.GEMINI_API_KEY?.trim());
   const hasDatabaseUrl = Boolean(process.env.DATABASE_URL?.trim());
   const hasJwtSecret = Boolean(process.env.JWT_SECRET?.trim());
 
   console.log(`[startup] PORT=${port}`);
-  console.log(`[startup] GROQ_API_KEY=${hasGroqKey ? "present" : "missing"}`);
+  console.log(
+    `[startup] GEMINI_API_KEY=${hasGeminiKey ? "present" : "missing"}`
+  );
   console.log(`[startup] DATABASE_URL=${hasDatabaseUrl ? "present" : "missing"}`);
   console.log(`[startup] JWT_SECRET=${hasJwtSecret ? "present" : "missing"}`);
 

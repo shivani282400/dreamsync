@@ -1,20 +1,20 @@
-import Groq from "groq-sdk";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { InterpretationOutput } from "../modules/interpretation/interpretation.types.js";
 
-let groq: Groq | null = null;
+let gemini: GoogleGenerativeAI | null = null;
 
-function getGroqClient(): Groq {
-  const apiKey = process.env.GROQ_API_KEY?.trim();
+function getGeminiClient(): GoogleGenerativeAI {
+  const apiKey = process.env.GEMINI_API_KEY?.trim();
   if (!apiKey) {
-    // Fix: explicit error for missing key, no silent fallback.
-    throw new Error("Groq API key not configured");
+    // Explicit error for missing key, no silent fallback.
+    throw new Error("Gemini API key not configured");
   }
 
-  if (!groq) {
-    groq = new Groq({ apiKey });
+  if (!gemini) {
+    gemini = new GoogleGenerativeAI(apiKey);
   }
 
-  return groq;
+  return gemini;
 }
 
 type LLMOptions = {
@@ -23,13 +23,14 @@ type LLMOptions = {
 
 /**
  * Main LLM abstraction for DreamSync
- * Currently powered by Groq (Llama 3 8B)
+ * Currently powered by Google Gemini
  */
 export async function generateInterpretationWithLLM(
   prompt: string,
   options?: LLMOptions
 ): Promise<InterpretationOutput> {
-  const client = getGroqClient();
+  const client = getGeminiClient();
+  const modelName = process.env.GEMINI_MODEL?.trim() || "gemini-1.5-flash";
 
   const system = `
 Return ONLY valid JSON.
@@ -47,16 +48,17 @@ The JSON must match this exact structure:
 }
   `.trim();
 
-  const response = await client.chat.completions.create({
-    model: "llama3-8b-8192",
-    messages: [
-      { role: "system", content: system },
-      { role: "user", content: prompt },
-    ],
-    temperature: options?.temperature ?? 0.8,
+  const model = client.getGenerativeModel({
+    model: modelName,
+    systemInstruction: system,
   });
 
-  const raw = response.choices?.[0]?.message?.content?.trim() ?? "";
+  const response = await model.generateContent({
+    contents: [{ role: "user", parts: [{ text: prompt }] }],
+    generationConfig: { temperature: options?.temperature ?? 0.8 },
+  });
+
+  const raw = response.response.text()?.trim() ?? "";
 
   if (!raw) {
     throw new Error("Empty response from LLM");
@@ -86,18 +88,20 @@ export async function generateJsonWithLLM<T = unknown>(
   prompt: string,
   options?: LLMOptions
 ): Promise<T> {
-  const client = getGroqClient();
+  const client = getGeminiClient();
+  const modelName = process.env.GEMINI_MODEL?.trim() || "gemini-1.5-flash";
 
-  const response = await client.chat.completions.create({
-    model: "llama3-8b-8192",
-    messages: [
-      { role: "system", content: "Return ONLY valid JSON. No markdown. No commentary." },
-      { role: "user", content: prompt.trim() },
-    ],
-    temperature: options?.temperature ?? 0.8,
+  const model = client.getGenerativeModel({
+    model: modelName,
+    systemInstruction: "Return ONLY valid JSON. No markdown. No commentary.",
   });
 
-  const raw = response.choices?.[0]?.message?.content?.trim() ?? "";
+  const response = await model.generateContent({
+    contents: [{ role: "user", parts: [{ text: prompt.trim() }] }],
+    generationConfig: { temperature: options?.temperature ?? 0.8 },
+  });
+
+  const raw = response.response.text()?.trim() ?? "";
 
   if (!raw) {
     throw new Error("Empty response from LLM");

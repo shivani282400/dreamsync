@@ -121,7 +121,7 @@ export async function generateInterpretation(
     const message = err instanceof Error ? err.message : String(err);
     console.error("❌ LLM call failed:", err);
     // Explicitly surface missing API key instead of falling back.
-    if (message.includes("Groq API key not configured")) {
+    if (message.includes("Gemini API key not configured")) {
       throw err;
     }
   }
