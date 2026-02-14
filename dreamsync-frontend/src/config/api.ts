@@ -1,4 +1,6 @@
-export const API_BASE_URL = "https://dreamsync-production.up.railway.app";
+const baseUrl = import.meta.env.VITE_API_URL?.trim();
+if (!baseUrl) {
+  throw new Error("VITE_API_URL not configured");
+}
 
-console.warn("🔥 USING HARDCODED API BASE URL 🔥");
-console.warn("API_BASE_URL =", API_BASE_URL);
+export const API_BASE_URL = baseUrl;

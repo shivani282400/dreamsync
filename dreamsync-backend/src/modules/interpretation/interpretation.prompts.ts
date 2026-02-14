@@ -42,6 +42,7 @@ Tags: ${(tags ?? []).join(", ") || "none"}
 
 Return ONLY a valid JSON object (no markdown, no extra text).
 Use double quotes for all keys and string values.
+Do not include any text before or after the JSON.
 
 JSON shape:
 {

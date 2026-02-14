@@ -22,12 +22,12 @@ export function buildStructuredDreamText(dream: {
 
 /**
  * Generate embedding safely (Phase 2 guarantee)
- * Returns null when embeddings are disabled (Gemini removed)
+ * Returns null when embeddings are disabled
  */
 export async function generateEmbedding(
   text: string
 ): Promise<number[] | null> {
   void text;
-  // Embeddings are optional; Gemini has been removed.
+  // Embeddings are optional and currently disabled.
   return null;
 }

@@ -126,25 +126,29 @@ export async function generateInterpretation(
     }
   }
 
+  let usedFallback = false;
   if (!result) {
     // Only use fallback when we truly cannot recover any usable output.
     result = fallbackInterpretation();
+    usedFallback = true;
   }
 
-  // 7️⃣ Persist
-  if (existing) {
-    // Update instead of create to avoid unique constraint violations on dreamId.
-    await prisma.interpretation.update({
-      where: { id: existing.id },
-      data: { content: result },
-    });
-  } else {
-    await prisma.interpretation.create({
-      data: {
-        dreamId: dream.id,
-        content: result,
-      },
-    });
+  // 7️⃣ Persist (skip fallback to avoid storing repeated generic content)
+  if (!usedFallback) {
+    if (existing) {
+      // Update instead of create to avoid unique constraint violations on dreamId.
+      await prisma.interpretation.update({
+        where: { id: existing.id },
+        data: { content: result },
+      });
+    } else {
+      await prisma.interpretation.create({
+        data: {
+          dreamId: dream.id,
+          content: result,
+        },
+      });
+    }
   }
 
   return result;
