@@ -2,10 +2,28 @@ import "dotenv/config";
 import { buildApp } from "./app.js";
 
 async function start() {
-  const app = await buildApp();
+  const portRaw = process.env.PORT?.trim();
+  const port = portRaw ? Number(portRaw) : NaN;
+  const hasGroqKey = Boolean(process.env.GROQ_API_KEY?.trim());
+  const hasDatabaseUrl = Boolean(process.env.DATABASE_URL?.trim());
+  const hasJwtSecret = Boolean(process.env.JWT_SECRET?.trim());
 
-  // Railway provides PORT automatically
-  const port = Number(process.env.PORT) || 8080;
+  console.log(`[startup] PORT=${portRaw ?? ""}`);
+  console.log(`[startup] GROQ_API_KEY=${hasGroqKey ? "present" : "missing"}`);
+  console.log(`[startup] DATABASE_URL=${hasDatabaseUrl ? "present" : "missing"}`);
+  console.log(`[startup] JWT_SECRET=${hasJwtSecret ? "present" : "missing"}`);
+
+  if (!portRaw || Number.isNaN(port) || port <= 0) {
+    throw new Error("PORT not configured or invalid");
+  }
+  if (!hasDatabaseUrl) {
+    throw new Error("DATABASE_URL not configured");
+  }
+  if (!hasJwtSecret) {
+    throw new Error("JWT_SECRET not configured");
+  }
+
+  const app = await buildApp();
 
   try {
     await app.listen({
