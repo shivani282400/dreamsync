@@ -25,15 +25,15 @@ export type DreamForEmbedding = {
 /**
  * Generate embedding from structured dream text and upsert to vector DB.
  * Call this fire-and-forget after POST /dreams; do not await in the route handler.
- * If OPENAI_API_KEY or PINECONE_API_KEY are unset, embedding is skipped.
+ * If PINECONE_API_KEY is unset, embedding is skipped.
  */
 export async function embedAndStoreDream(
   dream: DreamForEmbedding,
   log: FastifyBaseLogger
 ): Promise<void> {
-  if (!process.env.OPENAI_API_KEY || !process.env.PINECONE_API_KEY) {
+  if (!process.env.PINECONE_API_KEY) {
     log.debug(
-      "Skipping dream embedding (OPENAI_API_KEY or PINECONE_API_KEY not set)"
+      "Skipping dream embedding (PINECONE_API_KEY not set)"
     );
     return;
   }
@@ -52,7 +52,7 @@ export async function embedAndStoreDream(
     if (!embedding) {
       log.debug(
         { dreamId: dream.id },
-        "Embedding generation skipped (no OpenAI client)"
+        "Embedding generation skipped (embedding provider disabled)"
       );
       return;
     }

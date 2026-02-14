@@ -4,13 +4,14 @@ import { InterpretationOutput } from "../modules/interpretation/interpretation.t
 let groq: Groq | null = null;
 
 function getGroqClient(): Groq {
-  if (!process.env.GROQ_API_KEY) {
+  const apiKey = process.env.GROQ_API_KEY?.trim();
+  if (!apiKey) {
     // Fix: explicit error for missing key, no silent fallback.
     throw new Error("Groq API key not configured");
   }
 
   if (!groq) {
-    groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+    groq = new Groq({ apiKey });
   }
 
   return groq;

@@ -21,7 +21,7 @@ Guidelines:
 - Explicitly mention at least two concrete dream details.
 - Keep the language natural and easy to read.
 - Gently explore what the symbols might suggest.
-- Use soft words like “may,” “might,” or “could.”
+- Use soft words like "may," "might," or "could."
 - Avoid psychological jargon or abstract filler phrases.
 - Do not sound mystical or dramatic.
 - Do not ask the user for clarification.
@@ -40,13 +40,18 @@ ${dreamText}
 Mood: ${mood ?? "not specified"}
 Tags: ${(tags ?? []).join(", ") || "none"}
 
-Write content for these JSON fields:
-- summary: 2–3 sentences grounded in this dream, friendly and calm.
-- themes: 3–5 short phrases capturing emotional or narrative threads.
-- emotionalTone: 1 sentence that reflects the mood if provided.
-- reflectionPrompts: 3 open-ended questions that feel personal, not generic.
-- symbolTags: 3–6 specific symbols or motifs from the dream.
-- wordReflections: 1–2 entries, each a { word, reflection } pair tied to a single word.
+Return ONLY a valid JSON object (no markdown, no extra text).
+Use double quotes for all keys and string values.
+
+JSON shape:
+{
+  "summary": string, // 2-3 sentences grounded in this dream, friendly and calm
+  "themes": string[], // 3-5 short phrases capturing emotional or narrative threads
+  "emotionalTone": string, // 1 sentence that reflects the mood if provided
+  "reflectionPrompts": string[], // 3 open-ended questions that feel personal, not generic
+  "symbolTags": string[], // 3-6 specific symbols or motifs from the dream
+  "wordReflections": [{ "word": string, "reflection": string }] // 1-2 entries tied to a single word
+}
 
 Keep total length 110–160 words. Make it feel like a thoughtful friend reflecting with the dreamer.
 `;

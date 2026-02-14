@@ -29,7 +29,7 @@ function fallbackInterpretation(): InterpretationOutput {
   console.warn("⚠️ Using fallback interpretation (LLM failed)");
 
   return {
-    summary: "Interpretation could not be generated at this time.",
+    summary: "Interpretation temporarily unavailable due to a processing error.",
     themes: [],
     emotionalTone: "",
     reflectionPrompts: [],
@@ -71,7 +71,7 @@ export async function generateInterpretation(
     where: { dreamId: dream.id },
   });
 
-  const forceRegenerate = input.forceRegenerate ?? true;
+  const forceRegenerate = input.forceRegenerate ?? false;
   if (existing && !forceRegenerate) {
     return existing.content as InterpretationOutput;
   }
