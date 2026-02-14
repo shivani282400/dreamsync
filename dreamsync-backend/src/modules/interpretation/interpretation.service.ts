@@ -75,8 +75,8 @@ export async function generateInterpretation(
     if (embedding && Array.isArray(embedding)) {
       await findSimilarDreams(input.userId, embedding, 3).catch(() => {});
     }
-  } catch (err) {
-    console.warn("⚠️ Embedding skipped:", err);
+  } catch {
+    // Embedding is non-blocking; ignore failures.
   }
 
   // 4️⃣ Build prompt
@@ -102,10 +102,6 @@ export async function generateInterpretation(
 
     result = normalizeInterpretation(llm);
   } catch (err: any) {
-    console.error("❌ LLM RAW ERROR:", err);
-    console.error("❌ LLM MESSAGE:", err?.message);
-    console.error("❌ LLM STACK:", err?.stack);
-
     // Do NOT mask the real error
     throw err;
   }

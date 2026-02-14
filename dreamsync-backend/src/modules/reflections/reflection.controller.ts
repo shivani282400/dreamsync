@@ -10,30 +10,41 @@ export async function reflectionController(
   request: FastifyRequest<{ Querystring: { period?: string } }>,
   reply: FastifyReply
 ) {
-  const user = (request as any).user;
+  try {
+    const user = (request as any).user;
 
-  if (!user?.id) {
-    return reply.status(401).send({ message: "Unauthorized" });
-  }
+    if (!user?.id) {
+      return reply.status(401).send({ message: "Unauthorized" });
+    }
 
-  const period = request.query.period;
-  if (!period) {
-    return reply.status(400).send({
-      message: "period is required (YYYY-MM)",
+    const period = request.query.period;
+    if (!period) {
+      return reply.status(400).send({
+        message: "period is required (YYYY-MM)",
+      });
+    }
+
+    // Phase 5.1 — deterministic monthly reflection
+    const reflection = await generateMonthlyReflection(
+      request.server.prisma,
+      user.id,
+      period
+    );
+
+    // Phase 5.2 — poetic rewrite (safe + optional)
+    const poetic = await rewriteReflectionPoetically(reflection);
+
+    return reply.send(poetic);
+  } catch (err: any) {
+    request.log.error(
+      { error: err?.message, stack: err?.stack },
+      "Failed to generate monthly reflection"
+    );
+    return reply.status(500).send({
+      error: "Failed to generate monthly reflection",
+      details: err?.message ?? "Unknown error",
     });
   }
-
-  // Phase 5.1 — deterministic monthly reflection
-  const reflection = await generateMonthlyReflection(
-    request.server.prisma,
-    user.id,
-    period
-  );
-
-  // Phase 5.2 — poetic rewrite (safe + optional)
-  const poetic = await rewriteReflectionPoetically(reflection);
-
-  return reply.send(poetic);
 }
 
 /**
@@ -50,43 +61,54 @@ export async function createDreamReflectionController(
   }>,
   reply: FastifyReply
 ) {
-  const user = (request as any).user;
+  try {
+    const user = (request as any).user;
 
-  if (!user?.id) {
-    return reply.status(401).send({ message: "Unauthorized" });
-  }
+    if (!user?.id) {
+      return reply.status(401).send({ message: "Unauthorized" });
+    }
 
-  const { dreamId, question, answer } = request.body || {};
+    const { dreamId, question, answer } = request.body || {};
 
-  if (!dreamId || !question || !answer) {
-    return reply.status(400).send({
-      message: "dreamId, question, and answer are required",
+    if (!dreamId || !question || !answer) {
+      return reply.status(400).send({
+        message: "dreamId, question, and answer are required",
+      });
+    }
+
+    // 🔒 Verify dream ownership
+    const dream = await request.server.prisma.dream.findFirst({
+      where: {
+        id: dreamId,
+        userId: user.id,
+      },
+      select: { id: true },
+    });
+
+    if (!dream) {
+      return reply.status(404).send({ message: "Dream not found" });
+    }
+
+    // ✅ Correct Prisma call
+    const reflection = await request.server.prisma.dreamReflection.create({
+      data: {
+        dreamId: dream.id,
+        question,
+        answer,
+      },
+    });
+
+    return reply.send(reflection);
+  } catch (err: any) {
+    request.log.error(
+      { error: err?.message, stack: err?.stack },
+      "Failed to create dream reflection"
+    );
+    return reply.status(500).send({
+      error: "Failed to create dream reflection",
+      details: err?.message ?? "Unknown error",
     });
   }
-
-  // 🔒 Verify dream ownership
-  const dream = await request.server.prisma.dream.findFirst({
-    where: {
-      id: dreamId,
-      userId: user.id,
-    },
-    select: { id: true },
-  });
-
-  if (!dream) {
-    return reply.status(404).send({ message: "Dream not found" });
-  }
-
-  // ✅ Correct Prisma call
-  const reflection = await request.server.prisma.dreamReflection.create({
-    data: {
-      dreamId: dream.id,
-      question,
-      answer,
-    },
-  });
-
-  return reply.send(reflection);
 }
 
 /**
@@ -97,33 +119,44 @@ export async function getDreamReflectionsController(
   request: FastifyRequest<{ Params: { id: string } }>,
   reply: FastifyReply
 ) {
-  const user = (request as any).user;
+  try {
+    const user = (request as any).user;
 
-  if (!user?.id) {
-    return reply.status(401).send({ message: "Unauthorized" });
+    if (!user?.id) {
+      return reply.status(401).send({ message: "Unauthorized" });
+    }
+
+    const dreamId = request.params.id;
+
+    // 🔒 Verify dream ownership
+    const dream = await request.server.prisma.dream.findFirst({
+      where: {
+        id: dreamId,
+        userId: user.id,
+      },
+      select: { id: true },
+    });
+
+    if (!dream) {
+      return reply.status(404).send({ message: "Dream not found" });
+    }
+
+    const reflections = await request.server.prisma.dreamReflection.findMany({
+      where: { dreamId: dream.id },
+      orderBy: { createdAt: "asc" },
+    });
+
+    return reply.send(reflections);
+  } catch (err: any) {
+    request.log.error(
+      { error: err?.message, stack: err?.stack },
+      "Failed to fetch dream reflections"
+    );
+    return reply.status(500).send({
+      error: "Failed to fetch dream reflections",
+      details: err?.message ?? "Unknown error",
+    });
   }
-
-  const dreamId = request.params.id;
-
-  // 🔒 Verify dream ownership
-  const dream = await request.server.prisma.dream.findFirst({
-    where: {
-      id: dreamId,
-      userId: user.id,
-    },
-    select: { id: true },
-  });
-
-  if (!dream) {
-    return reply.status(404).send({ message: "Dream not found" });
-  }
-
-  const reflections = await request.server.prisma.dreamReflection.findMany({
-    where: { dreamId: dream.id },
-    orderBy: { createdAt: "asc" },
-  });
-
-  return reply.send(reflections);
 }
 
 /**
@@ -137,36 +170,47 @@ export async function updateDreamReflectionController(
   }>,
   reply: FastifyReply
 ) {
-  const user = (request as any).user;
+  try {
+    const user = (request as any).user;
 
-  if (!user?.id) {
-    return reply.status(401).send({ message: "Unauthorized" });
+    if (!user?.id) {
+      return reply.status(401).send({ message: "Unauthorized" });
+    }
+
+    const reflectionId = request.params.id;
+    const { answer } = request.body || {};
+
+    if (!answer || !answer.trim()) {
+      return reply.status(400).send({ message: "answer is required" });
+    }
+
+    const reflection = await request.server.prisma.dreamReflection.findFirst({
+      where: {
+        id: reflectionId,
+        dream: { userId: user.id },
+      },
+    });
+
+    if (!reflection) {
+      return reply.status(404).send({ message: "Reflection not found" });
+    }
+
+    const updated = await request.server.prisma.dreamReflection.update({
+      where: { id: reflectionId },
+      data: { answer },
+    });
+
+    return reply.send(updated);
+  } catch (err: any) {
+    request.log.error(
+      { error: err?.message, stack: err?.stack },
+      "Failed to update dream reflection"
+    );
+    return reply.status(500).send({
+      error: "Failed to update dream reflection",
+      details: err?.message ?? "Unknown error",
+    });
   }
-
-  const reflectionId = request.params.id;
-  const { answer } = request.body || {};
-
-  if (!answer || !answer.trim()) {
-    return reply.status(400).send({ message: "answer is required" });
-  }
-
-  const reflection = await request.server.prisma.dreamReflection.findFirst({
-    where: {
-      id: reflectionId,
-      dream: { userId: user.id },
-    },
-  });
-
-  if (!reflection) {
-    return reply.status(404).send({ message: "Reflection not found" });
-  }
-
-  const updated = await request.server.prisma.dreamReflection.update({
-    where: { id: reflectionId },
-    data: { answer },
-  });
-
-  return reply.send(updated);
 }
 
 /**
@@ -177,28 +221,39 @@ export async function deleteDreamReflectionController(
   request: FastifyRequest<{ Params: { id: string } }>,
   reply: FastifyReply
 ) {
-  const user = (request as any).user;
+  try {
+    const user = (request as any).user;
 
-  if (!user?.id) {
-    return reply.status(401).send({ message: "Unauthorized" });
+    if (!user?.id) {
+      return reply.status(401).send({ message: "Unauthorized" });
+    }
+
+    const reflectionId = request.params.id;
+
+    const reflection = await request.server.prisma.dreamReflection.findFirst({
+      where: {
+        id: reflectionId,
+        dream: { userId: user.id },
+      },
+    });
+
+    if (!reflection) {
+      return reply.status(404).send({ message: "Reflection not found" });
+    }
+
+    await request.server.prisma.dreamReflection.delete({
+      where: { id: reflectionId },
+    });
+
+    return reply.send({ ok: true });
+  } catch (err: any) {
+    request.log.error(
+      { error: err?.message, stack: err?.stack },
+      "Failed to delete dream reflection"
+    );
+    return reply.status(500).send({
+      error: "Failed to delete dream reflection",
+      details: err?.message ?? "Unknown error",
+    });
   }
-
-  const reflectionId = request.params.id;
-
-  const reflection = await request.server.prisma.dreamReflection.findFirst({
-    where: {
-      id: reflectionId,
-      dream: { userId: user.id },
-    },
-  });
-
-  if (!reflection) {
-    return reply.status(404).send({ message: "Reflection not found" });
-  }
-
-  await request.server.prisma.dreamReflection.delete({
-    where: { id: reflectionId },
-  });
-
-  return reply.send({ ok: true });
 }

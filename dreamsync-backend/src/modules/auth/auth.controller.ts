@@ -34,6 +34,10 @@ export async function registerController(
       username: result.username,
     });
   } catch (err) {
+    request.log.error(
+      { error: err instanceof Error ? err.message : String(err) },
+      "Registration failed"
+    );
     const message =
       err instanceof Error ? err.message : "Registration failed";
     return reply.status(400).send({ message });
@@ -73,6 +77,10 @@ export async function loginController(
       },
     });
   } catch (err) {
+    request.log.error(
+      { error: err instanceof Error ? err.message : String(err) },
+      "Login failed"
+    );
     const message =
       err instanceof Error ? err.message : "Invalid credentials";
     return reply.status(401).send({ message });

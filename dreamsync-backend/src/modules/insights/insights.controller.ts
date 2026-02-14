@@ -8,18 +8,18 @@ export async function weeklyInsightsController(
   request: FastifyRequest<{ Querystring: { week?: string } }>,
   reply: FastifyReply
 ) {
-  const user = (request as any).user;
-
-  if (!user?.id) {
-    return reply.status(401).send({ message: "Unauthorized" });
-  }
-
-  const week = request.query.week;
-  if (!week) {
-    return reply.status(400).send({ message: "week is required (YYYY-Www)" });
-  }
-
   try {
+    const user = (request as any).user;
+
+    if (!user?.id) {
+      return reply.status(401).send({ message: "Unauthorized" });
+    }
+
+    const week = request.query.week;
+    if (!week) {
+      return reply.status(400).send({ message: "week is required (YYYY-Www)" });
+    }
+
     const content = await getWeeklyInsightSnapshot(
       request.server.prisma,
       user.id,
@@ -27,7 +27,14 @@ export async function weeklyInsightsController(
     );
     return reply.send(content);
   } catch (err: any) {
-    return reply.status(400).send({ message: err.message || "Invalid week" });
+    request.log.error(
+      { error: err?.message, stack: err?.stack },
+      "Failed to fetch weekly insights"
+    );
+    return reply.status(500).send({
+      error: "Failed to fetch weekly insights",
+      details: err?.message ?? "Unknown error",
+    });
   }
 }
 
@@ -35,18 +42,18 @@ export async function monthlyInsightsController(
   request: FastifyRequest<{ Querystring: { month?: string } }>,
   reply: FastifyReply
 ) {
-  const user = (request as any).user;
-
-  if (!user?.id) {
-    return reply.status(401).send({ message: "Unauthorized" });
-  }
-
-  const month = request.query.month;
-  if (!month) {
-    return reply.status(400).send({ message: "month is required (YYYY-MM)" });
-  }
-
   try {
+    const user = (request as any).user;
+
+    if (!user?.id) {
+      return reply.status(401).send({ message: "Unauthorized" });
+    }
+
+    const month = request.query.month;
+    if (!month) {
+      return reply.status(400).send({ message: "month is required (YYYY-MM)" });
+    }
+
     const content = await getMonthlyInsightSnapshot(
       request.server.prisma,
       user.id,
@@ -54,6 +61,13 @@ export async function monthlyInsightsController(
     );
     return reply.send(content);
   } catch (err: any) {
-    return reply.status(400).send({ message: err.message || "Invalid month" });
+    request.log.error(
+      { error: err?.message, stack: err?.stack },
+      "Failed to fetch monthly insights"
+    );
+    return reply.status(500).send({
+      error: "Failed to fetch monthly insights",
+      details: err?.message ?? "Unknown error",
+    });
   }
 }

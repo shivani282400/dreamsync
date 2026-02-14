@@ -46,9 +46,8 @@ export async function generateInterpretationWithLLM(
 ): Promise<InterpretationOutput> {
   const client = getGeminiClient();
 
-  // Use supported model for v1beta endpoint
   const modelName =
-    process.env.GEMINI_MODEL?.trim() || "gemini-1.5-flash";
+    process.env.GEMINI_MODEL?.trim() || "gemini-1.0-pro";
 
   const systemInstruction = `
 Return ONLY valid JSON.
@@ -91,8 +90,7 @@ The JSON must match this exact structure:
 
     return JSON.parse(jsonString) as InterpretationOutput;
   } catch (err: any) {
-    console.error("❌ Gemini LLM Error:", err?.message || err);
-    throw err;
+    throw err instanceof Error ? err : new Error(String(err));
   }
 }
 
@@ -106,7 +104,7 @@ export async function generateJsonWithLLM<T = unknown>(
   const client = getGeminiClient();
 
   const modelName =
-    process.env.GEMINI_MODEL?.trim() || "gemini-1.5-flash";
+    process.env.GEMINI_MODEL?.trim() || "gemini-1.0-pro";
 
   const model = client.getGenerativeModel({
     model: modelName,
@@ -134,7 +132,6 @@ export async function generateJsonWithLLM<T = unknown>(
 
     return JSON.parse(jsonString) as T;
   } catch (err: any) {
-    console.error("❌ Gemini JSON LLM Error:", err?.message || err);
-    throw err;
+    throw err instanceof Error ? err : new Error(String(err));
   }
 }

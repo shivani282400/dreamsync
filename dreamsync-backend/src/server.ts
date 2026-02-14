@@ -33,6 +33,12 @@ async function start() {
     }
   }
 
+  if (hasDatabaseUrl && !/\b-pooler\./.test(process.env.DATABASE_URL || "")) {
+    console.warn(
+      "DATABASE_URL does not appear to be a Neon pooler connection (-pooler.*)."
+    );
+  }
+
   const app = await buildApp();
 
   try {
