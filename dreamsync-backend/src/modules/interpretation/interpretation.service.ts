@@ -102,6 +102,7 @@ export async function generateInterpretation(
   const lens = getRandomLens();
 
   const prompt = buildInterpretationPrompt({
+    title: dream.title ?? undefined,
     dreamText: dream.content,
     mood: dream.mood ?? undefined,
     tags: dream.tags ?? [],
@@ -113,7 +114,9 @@ export async function generateInterpretation(
 
   try {
     const llm = await generateInterpretationWithLLM(prompt, {
-      temperature: 0.8,
+      temperature: 0.85,
+      topP: 0.9,
+      maxTokens: 240,
     });
 
     result = normalizeInterpretation(llm);
@@ -124,31 +127,27 @@ export async function generateInterpretation(
     if (message.includes("Gemini API key not configured")) {
       throw err;
     }
+    throw new Error("Interpretation generation failed");
   }
 
-  let usedFallback = false;
   if (!result) {
-    // Only use fallback when we truly cannot recover any usable output.
-    result = fallbackInterpretation();
-    usedFallback = true;
+    throw new Error("Interpretation normalization failed");
   }
 
-  // 7️⃣ Persist (skip fallback to avoid storing repeated generic content)
-  if (!usedFallback) {
-    if (existing) {
-      // Update instead of create to avoid unique constraint violations on dreamId.
-      await prisma.interpretation.update({
-        where: { id: existing.id },
-        data: { content: result },
-      });
-    } else {
-      await prisma.interpretation.create({
-        data: {
-          dreamId: dream.id,
-          content: result,
-        },
-      });
-    }
+  // 7️⃣ Persist
+  if (existing) {
+    // Update instead of create to avoid unique constraint violations on dreamId.
+    await prisma.interpretation.update({
+      where: { id: existing.id },
+      data: { content: result },
+    });
+  } else {
+    await prisma.interpretation.create({
+      data: {
+        dreamId: dream.id,
+        content: result,
+      },
+    });
   }
 
   return result;

@@ -1,18 +1,23 @@
-const rawBaseUrl = import.meta.env.VITE_API_URL?.trim();
-if (!rawBaseUrl) {
+let baseUrl = import.meta.env.VITE_API_URL?.trim();
+if (!baseUrl) {
   throw new Error("VITE_API_URL not configured");
 }
 
-// Validate and normalize to a proper absolute URL with protocol and trailing slash.
+// Normalize protocol if missing (defaults to https://).
+if (!/^https?:\/\//.test(baseUrl)) {
+  baseUrl = `https://${baseUrl}`;
+}
+
+// Validate and normalize to a proper absolute URL with trailing slash.
 let normalizedBaseUrl: string;
 try {
-  const url = new URL(rawBaseUrl);
+  const url = new URL(baseUrl);
   normalizedBaseUrl = url.toString().endsWith("/")
     ? url.toString()
     : `${url.toString()}/`;
 } catch {
   throw new Error(
-    `VITE_API_URL must be a valid absolute URL with protocol (e.g. https://example.com): "${rawBaseUrl}"`
+    `VITE_API_URL must be a valid URL (e.g. https://example.com): "${baseUrl}"`
   );
 }
 

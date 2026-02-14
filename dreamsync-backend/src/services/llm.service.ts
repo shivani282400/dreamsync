@@ -19,6 +19,8 @@ function getGeminiClient(): GoogleGenerativeAI {
 
 type LLMOptions = {
   temperature?: number;
+  topP?: number;
+  maxTokens?: number;
 };
 
 /**
@@ -55,7 +57,11 @@ The JSON must match this exact structure:
 
   const response = await model.generateContent({
     contents: [{ role: "user", parts: [{ text: prompt }] }],
-    generationConfig: { temperature: options?.temperature ?? 0.8 },
+    generationConfig: {
+      temperature: options?.temperature ?? 0.8,
+      topP: options?.topP ?? 0.9,
+      maxOutputTokens: options?.maxTokens ?? 240,
+    },
   });
 
   const raw = response.response.text()?.trim() ?? "";
@@ -98,7 +104,11 @@ export async function generateJsonWithLLM<T = unknown>(
 
   const response = await model.generateContent({
     contents: [{ role: "user", parts: [{ text: prompt.trim() }] }],
-    generationConfig: { temperature: options?.temperature ?? 0.8 },
+    generationConfig: {
+      temperature: options?.temperature ?? 0.8,
+      topP: options?.topP ?? 0.9,
+      maxOutputTokens: options?.maxTokens ?? 240,
+    },
   });
 
   const raw = response.response.text()?.trim() ?? "";

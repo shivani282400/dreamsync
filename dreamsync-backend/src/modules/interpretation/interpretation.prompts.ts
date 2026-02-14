@@ -1,14 +1,16 @@
 export function buildInterpretationPrompt(params: {
+  title?: string;
   dreamText: string;
   mood?: string;
   tags?: string[];
   lens?: string;
 }) {
-  const { dreamText, mood, tags, lens } = params;
+  const { title, dreamText, mood, tags, lens } = params;
 
   // Prompt aligns with JSON output and enforces specificity + non-generic tone.
   return `
 You are a friendly and emotionally intelligent dream reflection guide.
+Interpret this dream uniquely based on emotional tone, symbols, and context. Avoid generic explanations.
 
 Your tone should feel:
 - Warm and conversational
@@ -37,6 +39,7 @@ Dream:
 ${dreamText}
 """
 
+Title: ${title ?? "untitled"}
 Mood: ${mood ?? "not specified"}
 Tags: ${(tags ?? []).join(", ") || "none"}
 

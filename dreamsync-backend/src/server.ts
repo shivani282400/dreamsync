@@ -27,6 +27,10 @@ async function start() {
     throw new Error("JWT_SECRET not configured");
   }
 
+  if (!hasGeminiKey) {
+    throw new Error("GEMINI_API_KEY not configured");
+  }
+
   const app = await buildApp();
 
   try {

@@ -101,4 +101,3 @@ ALTER TABLE "InsightSnapshot" ADD CONSTRAINT "InsightSnapshot_userId_fkey" FOREI
 
 -- AddForeignKey
 ALTER TABLE "CommunityDream" ADD CONSTRAINT "CommunityDream_originalDreamId_fkey" FOREIGN KEY ("originalDreamId") REFERENCES "Dream"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
