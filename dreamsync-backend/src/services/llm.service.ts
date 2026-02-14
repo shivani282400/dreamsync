@@ -48,7 +48,7 @@ export async function generateInterpretationWithLLM(
 
   // Use supported model for v1beta endpoint
   const modelName =
-    process.env.GEMINI_MODEL?.trim() || "gemini-1.0-pro";
+    process.env.GEMINI_MODEL?.trim() || "gemini-1.5-flash";
 
   const systemInstruction = `
 Return ONLY valid JSON.
@@ -106,7 +106,7 @@ export async function generateJsonWithLLM<T = unknown>(
   const client = getGeminiClient();
 
   const modelName =
-    process.env.GEMINI_MODEL?.trim() || "gemini-1.0-pro";
+    process.env.GEMINI_MODEL?.trim() || "gemini-1.5-flash";
 
   const model = client.getGenerativeModel({
     model: modelName,
