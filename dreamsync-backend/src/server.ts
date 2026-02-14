@@ -19,16 +19,18 @@ async function start() {
   console.log(`[startup] DATABASE_URL=${hasDatabaseUrl ? "present" : "missing"}`);
   console.log(`[startup] JWT_SECRET=${hasJwtSecret ? "present" : "missing"}`);
 
-  if (!hasDatabaseUrl) {
-    throw new Error("DATABASE_URL not configured");
-  }
+  const missing: string[] = [];
+  if (!hasDatabaseUrl) missing.push("DATABASE_URL");
+  if (!hasJwtSecret) missing.push("JWT_SECRET");
+  if (!hasGeminiKey) missing.push("GEMINI_API_KEY");
 
-  if (!hasJwtSecret) {
-    throw new Error("JWT_SECRET not configured");
-  }
-
-  if (!hasGeminiKey) {
-    throw new Error("GEMINI_API_KEY not configured");
+  if (missing.length > 0) {
+    const message = `Missing required env vars: ${missing.join(", ")}`;
+    if (process.env.NODE_ENV === "production") {
+      console.error(message);
+    } else {
+      throw new Error(message);
+    }
   }
 
   const app = await buildApp();
@@ -42,7 +44,9 @@ async function start() {
     console.log(`Server running on port ${port}`);
   } catch (err) {
     app.log.error(err);
-    process.exit(1);
+    if (process.env.NODE_ENV !== "production") {
+      process.exit(1);
+    }
   }
 }
 

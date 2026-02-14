@@ -41,6 +41,8 @@ export async function buildApp() {
   await app.register(prismaPlugin);
 
   // -------- ROUTES --------
+  // Health should be registered first for Railway checks.
+  app.register(healthRoutes);
   app.register(authRoutes, { prefix: "/auth" });
   app.register(interpretationRoutes, { prefix: "/api" });
   app.register(dreamsRoutes);
@@ -50,7 +52,6 @@ export async function buildApp() {
   app.register(yearlyArcRoutes);
   app.register(dreamChaptersRoutes);
   app.register(communityRoutes);
-  app.register(healthRoutes);
   app.register(userRoutes);
 
   return app;

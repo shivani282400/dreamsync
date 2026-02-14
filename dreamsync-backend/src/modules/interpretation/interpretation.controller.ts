@@ -24,9 +24,10 @@ export async function interpretDreamController(
 
     return reply.status(200).send(result);
   } catch (err: any) {
-    console.error("🔥 Interpretation Controller Error:", err);
-    console.error("🔥 Message:", err?.message);
-    console.error("🔥 Stack:", err?.stack);
+    request.log.error(
+      { error: err?.message, stack: err?.stack },
+      "Interpretation generation failed"
+    );
 
     return reply.status(500).send({
       error: "Interpretation generation failed",
@@ -64,7 +65,10 @@ export async function getInterpretationController(
 
     return reply.status(200).send(interpretation.content);
   } catch (err: any) {
-    console.error("🔥 Get Interpretation Error:", err);
+    request.log.error(
+      { error: err?.message, stack: err?.stack },
+      "Failed to fetch interpretation"
+    );
     return reply.status(500).send({
       error: "Failed to fetch interpretation",
       details: err?.message ?? "Unknown error",
