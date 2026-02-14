@@ -22,25 +22,6 @@ type InterpretationOutput = {
   wordReflections: { word: string; reflection: string }[];
 };
 
-/**
- * Fallback — ONLY if LLM completely fails
- */
-function fallbackInterpretation(): InterpretationOutput {
-  console.warn("⚠️ Using fallback interpretation (LLM failed)");
-
-  return {
-    summary: "Interpretation temporarily unavailable due to a processing error.",
-    themes: [],
-    emotionalTone: "",
-    reflectionPrompts: [],
-    symbolTags: [],
-    wordReflections: [],
-  };
-}
-
-/**
- * Random interpretive lens
- */
 function getRandomLens() {
   const lenses = ["symbolic", "emotional", "narrative", "memory-based"];
   return lenses[Math.floor(Math.random() * lenses.length)];
@@ -66,7 +47,7 @@ export async function generateInterpretation(
     throw new Error("Dream not found or access denied");
   }
 
-  // 2️⃣ Idempotency (never reuse stale content unless explicitly allowed)
+  // 2️⃣ Idempotency
   const existing = await prisma.interpretation.findUnique({
     where: { dreamId: dream.id },
   });
@@ -94,11 +75,11 @@ export async function generateInterpretation(
     if (embedding && Array.isArray(embedding)) {
       await findSimilarDreams(input.userId, embedding, 3).catch(() => {});
     }
-  } catch {
-    console.warn("Embedding skipped.");
+  } catch (err) {
+    console.warn("⚠️ Embedding skipped:", err);
   }
 
-  // 4️⃣ Build prompt (Friendly Reflective Guide tone)
+  // 4️⃣ Build prompt
   const lens = getRandomLens();
 
   const prompt = buildInterpretationPrompt({
@@ -120,23 +101,21 @@ export async function generateInterpretation(
     });
 
     result = normalizeInterpretation(llm);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error("❌ LLM call failed:", err);
-    // Explicitly surface missing API key instead of falling back.
-    if (message.includes("Gemini API key not configured")) {
-      throw err;
-    }
-    throw new Error("Interpretation generation failed");
+  } catch (err: any) {
+    console.error("❌ LLM RAW ERROR:", err);
+    console.error("❌ LLM MESSAGE:", err?.message);
+    console.error("❌ LLM STACK:", err?.stack);
+
+    // Do NOT mask the real error
+    throw err;
   }
 
   if (!result) {
     throw new Error("Interpretation normalization failed");
   }
 
-  // 7️⃣ Persist
+  // 6️⃣ Persist
   if (existing) {
-    // Update instead of create to avoid unique constraint violations on dreamId.
     await prisma.interpretation.update({
       where: { id: existing.id },
       data: { content: result },
