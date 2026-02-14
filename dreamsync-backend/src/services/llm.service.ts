@@ -5,8 +5,8 @@ let gemini: GoogleGenerativeAI | null = null;
 
 function getGeminiClient(): GoogleGenerativeAI {
   const apiKey = process.env.GEMINI_API_KEY?.trim();
+
   if (!apiKey) {
-    // Explicit error for missing key, no silent fallback.
     throw new Error("Gemini API key not configured");
   }
 
@@ -24,17 +24,33 @@ type LLMOptions = {
 };
 
 /**
- * Main LLM abstraction for DreamSync
- * Currently powered by Google Gemini
+ * Extract valid JSON from model response safely
+ */
+function extractJson(raw: string) {
+  const start = raw.indexOf("{");
+  const end = raw.lastIndexOf("}");
+
+  if (start === -1 || end === -1) {
+    throw new Error("LLM did not return JSON");
+  }
+
+  return raw.slice(start, end + 1);
+}
+
+/**
+ * Main LLM interpretation function
  */
 export async function generateInterpretationWithLLM(
   prompt: string,
   options?: LLMOptions
 ): Promise<InterpretationOutput> {
   const client = getGeminiClient();
-  const modelName = process.env.GEMINI_MODEL?.trim() || "gemini-1.5-flash";
 
-  const system = `
+  // Use supported model for v1beta endpoint
+  const modelName =
+    process.env.GEMINI_MODEL?.trim() || "gemini-1.0-pro";
+
+  const systemInstruction = `
 Return ONLY valid JSON.
 No markdown.
 No commentary.
@@ -48,87 +64,77 @@ The JSON must match this exact structure:
   "symbolTags": string[],
   "wordReflections": [{ "word": string, "reflection": string }]
 }
-  `.trim();
+`.trim();
 
   const model = client.getGenerativeModel({
     model: modelName,
-    systemInstruction: system,
+    systemInstruction,
   });
-
-  const response = await model.generateContent({
-    contents: [{ role: "user", parts: [{ text: prompt }] }],
-    generationConfig: {
-      temperature: options?.temperature ?? 0.8,
-      topP: options?.topP ?? 0.9,
-      maxOutputTokens: options?.maxTokens ?? 240,
-    },
-  });
-
-  const raw = response.response.text()?.trim() ?? "";
-
-  if (!raw) {
-    throw new Error("Empty response from LLM");
-  }
-
-  const start = raw.indexOf("{");
-  const end = raw.lastIndexOf("}");
-
-  if (start === -1 || end === -1) {
-    throw new Error("LLM did not return JSON");
-  }
-
-  const jsonString = raw.slice(start, end + 1);
 
   try {
+    const response = await model.generateContent({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: options?.temperature ?? 0.85,
+        topP: options?.topP ?? 0.9,
+        maxOutputTokens: options?.maxTokens ?? 240,
+      },
+    });
+
+    const raw = response.response.text()?.trim();
+
+    if (!raw) {
+      throw new Error("Empty response from LLM");
+    }
+
+    const jsonString = extractJson(raw);
+
     return JSON.parse(jsonString) as InterpretationOutput;
-  } catch {
-    throw new Error("LLM returned invalid JSON");
+  } catch (err: any) {
+    console.error("❌ Gemini LLM Error:", err?.message || err);
+    throw err;
   }
 }
 
 /**
- * Generic JSON helper
- * Use when the prompt already describes the JSON schema (e.g., reflection rewrites).
+ * Generic JSON generation helper
  */
 export async function generateJsonWithLLM<T = unknown>(
   prompt: string,
   options?: LLMOptions
 ): Promise<T> {
   const client = getGeminiClient();
-  const modelName = process.env.GEMINI_MODEL?.trim() || "gemini-1.5-flash";
+
+  const modelName =
+    process.env.GEMINI_MODEL?.trim() || "gemini-1.0-pro";
 
   const model = client.getGenerativeModel({
     model: modelName,
-    systemInstruction: "Return ONLY valid JSON. No markdown. No commentary.",
+    systemInstruction:
+      "Return ONLY valid JSON. No markdown. No commentary.",
   });
-
-  const response = await model.generateContent({
-    contents: [{ role: "user", parts: [{ text: prompt.trim() }] }],
-    generationConfig: {
-      temperature: options?.temperature ?? 0.8,
-      topP: options?.topP ?? 0.9,
-      maxOutputTokens: options?.maxTokens ?? 240,
-    },
-  });
-
-  const raw = response.response.text()?.trim() ?? "";
-
-  if (!raw) {
-    throw new Error("Empty response from LLM");
-  }
-
-  const start = raw.indexOf("{");
-  const end = raw.lastIndexOf("}");
-
-  if (start === -1 || end === -1) {
-    throw new Error("LLM did not return JSON");
-  }
-
-  const jsonString = raw.slice(start, end + 1);
 
   try {
+    const response = await model.generateContent({
+      contents: [{ role: "user", parts: [{ text: prompt.trim() }] }],
+      generationConfig: {
+        temperature: options?.temperature ?? 0.8,
+        topP: options?.topP ?? 0.9,
+        maxOutputTokens: options?.maxTokens ?? 240,
+      },
+    });
+
+    const raw = response.response.text()?.trim();
+
+    if (!raw) {
+      throw new Error("Empty response from LLM");
+    }
+
+    const jsonString = extractJson(raw);
+
     return JSON.parse(jsonString) as T;
-  } catch {
-    throw new Error("LLM returned invalid JSON");
+  } catch (err: any) {
+    console.error("❌ Gemini JSON LLM Error:", err?.message || err);
+    throw err;
   }
 }
