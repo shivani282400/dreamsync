@@ -7,8 +7,7 @@ import {
 import { requireAuth } from "../auth/auth.middleware.js"
 
 export async function dreamsRoutes(app: FastifyInstance) {
-  app.get("/dreams/me", { preHandler: requireAuth }, getMyDreamsController);
-  app.get("/dreams/:id", { preHandler: requireAuth }, getDreamController);
-
-  app.post("/dreams", { preHandler: requireAuth }, createDreamController);
+  app.get("/me", { preHandler: requireAuth }, getMyDreamsController);
+  app.get("/:id", { preHandler: requireAuth }, getDreamController);
+  app.post("/", { preHandler: requireAuth }, createDreamController);
 }

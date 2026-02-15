@@ -1,10 +1,13 @@
 import { FastifyRequest, FastifyReply } from "fastify";
 import { generateInterpretation } from "./interpretation.service.js";
 
+/**
+ * POST /interpretations/:dreamId
+ */
 export async function interpretDreamController(
   request: FastifyRequest<{ Params: { dreamId: string } }>,
   reply: FastifyReply
-) {
+): Promise<void> {
   try {
     const user = (request as any).user as
       | { id?: string; userId?: string; sub?: string }
@@ -14,7 +17,8 @@ export async function interpretDreamController(
     const userId = user?.userId ?? user?.id ?? user?.sub;
 
     if (!userId) {
-      return reply.status(401).send({ message: "Unauthorized" });
+      reply.status(401).send({ message: "Unauthorized" });
+      return;
     }
 
     const result = await generateInterpretation(request.server.prisma, {
@@ -22,24 +26,33 @@ export async function interpretDreamController(
       dreamId,
     });
 
-    return reply.status(200).send(result);
-  } catch (err: any) {
+    reply.status(200).send(result);
+  } catch (err: unknown) {
+    const error = err instanceof Error ? err : new Error(String(err));
+
     request.log.error(
-      { error: err?.message, stack: err?.stack },
+      {
+        message: error.message,
+        stack: error.stack,
+        name: error.name,
+      },
       "Interpretation generation failed"
     );
 
-    return reply.status(500).send({
+    reply.status(500).send({
       error: "Interpretation generation failed",
-      details: err?.message ?? "Unknown error",
+      details: error.message,
     });
   }
 }
 
+/**
+ * GET /interpretations/:dreamId
+ */
 export async function getInterpretationController(
   request: FastifyRequest<{ Params: { dreamId: string } }>,
   reply: FastifyReply
-) {
+): Promise<void> {
   try {
     const user = (request as any).user as
       | { id?: string; userId?: string; sub?: string }
@@ -49,29 +62,38 @@ export async function getInterpretationController(
     const userId = user?.userId ?? user?.id ?? user?.sub;
 
     if (!userId) {
-      return reply.status(401).send({ message: "Unauthorized" });
+      reply.status(401).send({ message: "Unauthorized" });
+      return;
     }
 
-    const interpretation = await request.server.prisma.interpretation.findFirst({
-      where: {
-        dreamId,
-        dream: { userId },
-      },
-    });
+    const interpretation =
+      await request.server.prisma.interpretation.findFirst({
+        where: {
+          dreamId,
+          dream: { userId },
+        },
+      });
 
     if (!interpretation) {
-      return reply.status(404).send({ message: "Interpretation not found" });
+      reply.status(404).send({ message: "Interpretation not found" });
+      return;
     }
 
-    return reply.status(200).send(interpretation.content);
-  } catch (err: any) {
+    reply.status(200).send(interpretation.content);
+  } catch (err: unknown) {
+    const error = err instanceof Error ? err : new Error(String(err));
+
     request.log.error(
-      { error: err?.message, stack: err?.stack },
+      {
+        message: error.message,
+        stack: error.stack,
+      },
       "Failed to fetch interpretation"
     );
-    return reply.status(500).send({
+
+    reply.status(500).send({
       error: "Failed to fetch interpretation",
-      details: err?.message ?? "Unknown error",
+      details: error.message,
     });
   }
 }
