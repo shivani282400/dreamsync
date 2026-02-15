@@ -46,18 +46,17 @@ export async function apiFetch(
 // ---------- Community ----------
 
 export async function shareDreamToCommunity(dreamId: string) {
-  const token = getAuthToken();
+  const token = getAuthToken()?.trim();
   const url = buildApiUrl(`community/share/${dreamId}`);
+  if (!token) {
+    throw new Error("Missing auth token for share request");
+  }
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
   };
 
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
-
   console.log("[shareDreamToCommunity] URL:", url);
-  console.log("[shareDreamToCommunity] token:", token ?? "");
+  console.log("[shareDreamToCommunity] token:", token);
   console.log("[shareDreamToCommunity] headers:", headers);
 
   const response = await fetch(url, {
@@ -80,7 +79,7 @@ export async function shareDreamToCommunity(dreamId: string) {
 }
 
 export async function unshareDreamFromCommunity(dreamId: string) {
-  return apiFetch(`/community/unshare/${dreamId}`, {
+  return apiFetch(`community/unshare/${dreamId}`, {
     method: "DELETE",
   });
 }
