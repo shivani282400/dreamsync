@@ -46,9 +46,37 @@ export async function apiFetch(
 // ---------- Community ----------
 
 export async function shareDreamToCommunity(dreamId: string) {
-  return apiFetch(`/community/share/${dreamId}`, {
+  const token = getAuthToken();
+  const url = buildApiUrl(`community/share/${dreamId}`);
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  console.log("[shareDreamToCommunity] URL:", url);
+  console.log("[shareDreamToCommunity] token:", token ?? "");
+  console.log("[shareDreamToCommunity] headers:", headers);
+
+  const response = await fetch(url, {
     method: "POST",
+    headers,
   });
+
+  if (!response.ok) {
+    let errorMessage = `API error: ${response.status}`;
+    try {
+      const error = await response.json();
+      errorMessage = error.message ?? errorMessage;
+    } catch {
+      // ignore JSON parse errors
+    }
+    throw new Error(errorMessage);
+  }
+
+  return response.json();
 }
 
 export async function unshareDreamFromCommunity(dreamId: string) {
