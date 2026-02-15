@@ -1,5 +1,4 @@
 import { FastifyRequest, FastifyReply } from "fastify";
-import { prisma } from "../../plugins/prisma.js"
 import * as DreamService from "./dreams.service.js"
 
 // GET /dreams/me
@@ -17,7 +16,8 @@ export async function getMyDreamsController(
       return reply.status(401).send({ message: "Unauthorized" });
     }
 
-    const dreams = await DreamService.getUserDreams(prisma, userId);
+    // Use the Fastify-decorated shared Prisma client.
+    const dreams = await DreamService.getUserDreams(request.server.prisma, userId);
     return reply.send({
       dreams,
       meta: { count: dreams.length },
@@ -51,7 +51,8 @@ export async function getDreamController(
 
     const { id } = request.params as { id: string };
 
-    const dream = await DreamService.getDreamById(prisma, id, userId);
+    // Use the Fastify-decorated shared Prisma client.
+    const dream = await DreamService.getDreamById(request.server.prisma, id, userId);
 
     if (!dream) {
       return reply.status(404).send({ message: "Dream not found" });
@@ -97,7 +98,8 @@ export async function createDreamController(
       return reply.status(400).send({ message: "Content required" });
     }
 
-    const dream = await DreamService.createDream(prisma, {
+    // Use the Fastify-decorated shared Prisma client.
+    const dream = await DreamService.createDream(request.server.prisma, {
       userId,
       ...body,
     });

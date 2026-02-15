@@ -45,7 +45,7 @@ export async function buildApp() {
   app.register(healthRoutes);
   app.register(authRoutes, { prefix: "/auth" });
   app.register(interpretationRoutes, { prefix: "/api" });
-  app.register(dreamsRoutes);
+  app.register(dreamsRoutes, { prefix: "/dreams" });
   app.register(statsRoutes);
   app.register(reflectionRoutes);
   app.register(insightsRoutes);
