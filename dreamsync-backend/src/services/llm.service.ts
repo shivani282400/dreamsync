@@ -25,7 +25,7 @@ async function callGeminiREST(
       generationConfig: {
         temperature: options?.temperature ?? 0.2,
         topP: options?.topP ?? 0.8,
-        maxOutputTokens: options?.maxTokens ?? 600,
+        maxOutputTokens: options?.maxTokens ?? 1500,
       },
     }),
   });
