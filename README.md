@@ -108,13 +108,7 @@ The system continues running independently after deployment.
 
 ---
 
-## Screenshots
 
-Add screenshots here when ready:
-
-![Dashboard](./screenshots/dashboard.png)
-![Dream Entry](./screenshots/dream-entry.png)
-![Insights](./screenshots/insights.png)
 
 ---
 
