@@ -8,23 +8,6 @@ type LLMOptions = {
 
 const GEMINI_MODEL = "gemini-2.5-flash";
 
-const FALLBACK_INTERPRETATION: InterpretationOutput = {
-  summary:
-    "Your dream feels rich with personal meaning. It may be reflecting an emotional transition unfolding in your waking life.",
-  themes: ["change", "self-reflection", "inner guidance"],
-  emotionalTone: "reflective",
-  reflectionPrompts: [
-    "What part of this dream felt most emotionally real to you?",
-    "Which symbol seems most connected to your current life?",
-    "What might this dream be encouraging you to notice?"
-  ],
-  symbolTags: ["journey", "threshold", "signal"],
-  wordReflections: [
-    { word: "journey", reflection: "Represents movement through a personal process." },
-    { word: "signal", reflection: "Suggests intuition trying to surface." }
-  ]
-};
-
 async function callGeminiREST(
   prompt: string,
   options?: LLMOptions
@@ -40,11 +23,11 @@ async function callGeminiREST(
     body: JSON.stringify({
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: {
-        temperature: 0.2,
-        topP: 0.8,
-        maxOutputTokens: 600
-      }
-    })
+        temperature: options?.temperature ?? 0.2,
+        topP: options?.topP ?? 0.8,
+        maxOutputTokens: options?.maxTokens ?? 600,
+      },
+    }),
   });
 
   if (!response.ok) {
@@ -56,118 +39,85 @@ async function callGeminiREST(
   const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
   if (!text) throw new Error("Gemini returned empty text");
 
-  return text.trim();
+  console.log("[Gemini raw response]", text);
+  return String(text).trim();
 }
 
-/* ---------------- STRUCTURED PARSING ---------------- */
-
-function ensureMinimumLength<T>(arr: T[], min: number, fallback: T[]): T[] {
-  if (!arr || arr.length === 0) return fallback;
-  if (arr.length >= min) return arr.slice(0, min);
-  const padded = [...arr];
-  while (padded.length < min) {
-    padded.push(fallback[padded.length % fallback.length]);
+function extractJsonObject(raw: string): string {
+  const cleaned = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
+  const start = cleaned.indexOf("{");
+  if (start === -1) {
+    throw new Error("No JSON object start found in Gemini response");
   }
-  return padded;
-}
 
-function parseStructured(raw: string): InterpretationOutput {
-  const cleaned = raw.replace(/```/g, "").trim();
-  const sections = new Map<string, string[]>();
-  let current = "";
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
 
-  const lines = cleaned.split(/\r?\n/);
-  const headerRegex = /^([A-Z_]+):\s*(.*)$/;
+  for (let i = start; i < cleaned.length; i += 1) {
+    const ch = cleaned[i];
 
-  for (const rawLine of lines) {
-    const line = rawLine.trim();
-    if (!line) continue;
-
-    const match = line.match(headerRegex);
-    if (match) {
-      current = match[1];
-      sections.set(current, []);
-      if (match[2]) sections.get(current)!.push(match[2]);
+    if (escaped) {
+      escaped = false;
       continue;
     }
+    if (ch === "\\") {
+      escaped = true;
+      continue;
+    }
+    if (ch === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (inString) continue;
 
-    if (current) sections.get(current)!.push(line);
+    if (ch === "{") depth += 1;
+    if (ch === "}") depth -= 1;
+
+    if (depth === 0) {
+      return cleaned.slice(start, i + 1);
+    }
   }
 
-  const summary = (sections.get("SUMMARY") ?? []).join(" ").trim();
-  const themes = (sections.get("THEMES") ?? []).map(l => l.replace(/^[-*]\s*/, "").trim());
-  const tone = (sections.get("EMOTIONAL_TONE") ?? []).join(" ").trim();
-  const prompts = (sections.get("REFLECTION_PROMPTS") ?? []).map(l => l.replace(/^[-*]\s*/, "").trim());
-  const tags = (sections.get("SYMBOL_TAGS") ?? []).map(l => l.replace(/^[-*]\s*/, "").trim());
-  const wordLines = sections.get("WORD_REFLECTIONS") ?? [];
-
-  const wordReflections = wordLines
-    .map(l => l.replace(/^[-*]\s*/, "").trim())
-    .map(l => {
-      const idx = l.indexOf(":");
-      if (idx === -1) return null;
-      return {
-        word: l.slice(0, idx).trim(),
-        reflection: l.slice(idx + 1).trim()
-      };
-    })
-    .filter(Boolean) as { word: string; reflection: string }[];
-
-  if (!summary) throw new Error("Missing SUMMARY");
-
-  return {
-    summary,
-    themes: ensureMinimumLength(themes, 3, FALLBACK_INTERPRETATION.themes),
-    emotionalTone: tone || FALLBACK_INTERPRETATION.emotionalTone,
-    reflectionPrompts: ensureMinimumLength(prompts, 3, FALLBACK_INTERPRETATION.reflectionPrompts),
-    symbolTags: ensureMinimumLength(tags, 2, FALLBACK_INTERPRETATION.symbolTags),
-    wordReflections: ensureMinimumLength(wordReflections, 2, FALLBACK_INTERPRETATION.wordReflections)
-  };
+  throw new Error("No complete JSON object found in Gemini response");
 }
 
-function buildPrompt(userPrompt: string) {
-  return `
-Return ONLY this format:
+function validateInterpretationShape(data: any): asserts data is InterpretationOutput {
+  const ok =
+    data &&
+    typeof data === "object" &&
+    typeof data.summary === "string" &&
+    Array.isArray(data.themes) &&
+    typeof data.emotionalTone === "string" &&
+    Array.isArray(data.reflectionPrompts) &&
+    Array.isArray(data.symbolTags) &&
+    Array.isArray(data.wordReflections);
 
-SUMMARY:
-<paragraph>
-
-THEMES:
-- item
-- item
-- item
-
-EMOTIONAL_TONE:
-<single word>
-
-REFLECTION_PROMPTS:
-- question
-- question
-- question
-
-SYMBOL_TAGS:
-- tag
-- tag
-
-WORD_REFLECTIONS:
-- word: meaning
-- word: meaning
-
-User dream:
-${userPrompt}
-`.trim();
+  if (!ok) {
+    throw new Error(
+      "Invalid interpretation JSON shape. Required keys: summary, themes, emotionalTone, reflectionPrompts, symbolTags, wordReflections"
+    );
+  }
 }
 
 export async function generateInterpretationWithLLM(
   prompt: string,
   options?: LLMOptions
 ): Promise<InterpretationOutput> {
+  const raw = await callGeminiREST(prompt, options);
+
   try {
-    const raw = await callGeminiREST(buildPrompt(prompt), options);
-    return parseStructured(raw);
-  } catch (err) {
-    console.log("LLM failed. Using fallback.", err);
-    return FALLBACK_INTERPRETATION;
+    const jsonText = extractJsonObject(raw);
+    const parsed = JSON.parse(jsonText);
+    validateInterpretationShape(parsed);
+    return parsed;
+  } catch (error) {
+    console.error("[Gemini parse error]", error);
+    throw new Error(
+      `Interpretation JSON parsing failed: ${
+        error instanceof Error ? error.message : String(error)
+      }`
+    );
   }
 }
 
@@ -176,5 +126,7 @@ export async function generateJsonWithLLM<T = unknown>(
   options?: LLMOptions
 ): Promise<T> {
   const raw = await callGeminiREST(prompt, options);
-  return raw as unknown as T;
+  const jsonText = extractJsonObject(raw);
+  return JSON.parse(jsonText) as T;
 }
+

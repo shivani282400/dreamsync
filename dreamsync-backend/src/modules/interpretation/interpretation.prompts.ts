@@ -29,6 +29,8 @@ No markdown.
 No explanation.
 No commentary.
 No code blocks.
+No text before JSON.
+No text after JSON.
 
 Use EXACTLY this structure:
 
