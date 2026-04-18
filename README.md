@@ -30,8 +30,8 @@ graph TD
     A[User Browser] --> B[Frontend - React/Vite]
     B -->|JWT| C[Fastify API]
     C --> D[PostgreSQL - Neon]
-    C --> E[LLM Service (Groq/Gemini)]
-    C --> F[Vector Database (Pinecone)]
+    C --> E["LLM Service (Groq/Gemini)"]
+    C --> F["Vector Database (Pinecone)"]
     E --> C
     F --> C
 ```
