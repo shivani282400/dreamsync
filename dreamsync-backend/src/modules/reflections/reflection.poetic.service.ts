@@ -1,6 +1,6 @@
-import { buildPoeticRewritePrompt } from "./reflection.prompts.js"
-import { generateJsonWithLLM } from "../../services/llm.service.js"
-import type { Reflection } from "./reflection.types.js"
+import { buildPoeticRewritePrompt } from "./reflection.prompts"
+import { generateJsonWithLLM } from "../../services/llm.service"
+import type { Reflection } from "./reflection.types"
 
 export async function rewriteReflectionPoetically(
   reflection: Reflection

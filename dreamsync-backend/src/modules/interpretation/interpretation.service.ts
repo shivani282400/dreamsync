@@ -1,17 +1,17 @@
 import {
   buildStructuredDreamText,
   generateEmbedding,
-} from "../../services/embedding.service.js";
+} from "../../services/embedding.service";
 
 import {
   findSimilarDreams,
   getDreamEmbedding,
-} from "../../services/vector.service.js";
+} from "../../services/vector.service";
 
-import { buildInterpretationPrompt } from "./interpretation.prompts.js";
-import { generateInterpretationWithLLM } from "../../services/llm.service.js";
+import { buildInterpretationPrompt } from "./interpretation.prompts";
+import { generateInterpretationWithLLM } from "../../services/llm.service";
 import { PrismaClient } from "@prisma/client";
-import { normalizeInterpretation } from "./interpretation.validators.js";
+import { normalizeInterpretation } from "./interpretation.validators";
 
 type InterpretationOutput = {
   summary: string;
@@ -95,9 +95,9 @@ export async function generateInterpretation(
 
   try {
     const llm = await generateInterpretationWithLLM(prompt, {
-      temperature: 0.85,
+      temperature: 0.75,
       topP: 0.9,
-      maxTokens: 240,
+      maxTokens: 1800,
     });
 
     result = normalizeInterpretation(llm);

@@ -9,10 +9,13 @@ export async function apiFetch(
   options: RequestInit = {}
 ) {
   const token = getAuthToken();
+  const hasBody = options.body !== undefined && options.body !== null;
 
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
+  const headers: Record<string, string> = {};
+
+  if (hasBody) {
+    headers["Content-Type"] = "application/json";
+  }
 
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
@@ -33,7 +36,7 @@ export async function apiFetch(
     let errorMessage = `API error: ${response.status}`;
     try {
       const error = await response.json();
-      errorMessage = error.message ?? errorMessage;
+      errorMessage = error.message ?? error.details ?? error.error ?? errorMessage;
     } catch {
       // ignore JSON parse errors
     }
@@ -68,7 +71,7 @@ export async function shareDreamToCommunity(dreamId: string) {
     let errorMessage = `API error: ${response.status}`;
     try {
       const error = await response.json();
-      errorMessage = error.message ?? errorMessage;
+      errorMessage = error.message ?? error.details ?? error.error ?? errorMessage;
     } catch {
       // ignore JSON parse errors
     }
@@ -139,10 +142,23 @@ export type DreamReflection = {
 
 export type CommunityDream = {
   id: string;
+  dreamId?: string;
+  content?: string;
   anonymizedText: string;
   theme: string;
   mood?: string;
   tags: string[];
+  createdAt: string;
+  username: string;
+  likesCount?: number;
+  commentsCount?: number;
+  isLiked?: boolean;
+  comments?: CommunityComment[];
+};
+
+export type CommunityComment = {
+  id: string;
+  content: string;
   createdAt: string;
   username: string;
 };
@@ -265,6 +281,34 @@ export async function getCommunityFeed(
       : "";
 
   return apiFetch(`/community/feed${query}`);
+}
+
+export async function likeDream(
+  dreamId: string
+): Promise<{
+  dreamId: string;
+  isLiked: boolean;
+  likesCount: number;
+  commentsCount: number;
+}> {
+  return apiFetch(`/dream/${dreamId}/like`, {
+    method: "POST",
+  });
+}
+
+export async function commentOnDream(
+  dreamId: string,
+  content: string
+): Promise<{
+  dreamId: string;
+  likesCount: number;
+  commentsCount: number;
+  comment: CommunityComment;
+}> {
+  return apiFetch(`/dream/${dreamId}/comment`, {
+    method: "POST",
+    body: JSON.stringify({ content }),
+  });
 }
 
 export async function updateDreamReflection(

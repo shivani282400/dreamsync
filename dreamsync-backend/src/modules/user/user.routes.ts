@@ -1,6 +1,6 @@
 import { FastifyInstance } from "fastify";
-import { requireAuth } from "../auth/auth.middleware.js"
-import { generateAnonymousUsername } from "../../utils/anonymousUsername.js"
+import { requireAuth } from "../auth/auth.middleware"
+import { generateAnonymousUsername } from "../../utils/anonymousUsername"
 
 function isValidUsername(value: string) {
   return /^[A-Za-z0-9_]{3,20}$/.test(value);

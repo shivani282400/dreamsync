@@ -4,9 +4,9 @@ import {
   getFrequencyStats,
   getTagTrends,
   getWordFrequency,
-} from "./stats.service.js"
-import { getEmotionalTrends } from "./emotionalTrends.service.js"
-import { getDreamClusters } from "./dreamClusters.service.js"
+} from "./stats.service"
+import { getEmotionalTrends } from "./emotionalTrends.service"
+import { getDreamClusters } from "./dreamClusters.service"
 
 // Phase 4.1
 export async function frequencyStatsController(

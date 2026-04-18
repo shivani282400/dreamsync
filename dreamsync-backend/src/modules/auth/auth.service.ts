@@ -1,6 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcrypt";
-import { generateAnonymousUsername } from "../../utils/anonymousUsername.js"
+import { generateAnonymousUsername } from "../../utils/anonymousUsername"
 
 export type RegisterInput = {
   email: string;

@@ -1,5 +1,5 @@
 import { PrismaClient } from "@prisma/client";
-import { generateAnonymousUsername } from "../utils/anonymousUsername.js"
+import { generateAnonymousUsername } from "../utils/anonymousUsername"
 
 const prisma = new PrismaClient();
 

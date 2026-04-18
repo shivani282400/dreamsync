@@ -1,5 +1,5 @@
 import { FastifyRequest, FastifyReply } from "fastify";
-import { generateInterpretation } from "./interpretation.service.js";
+import { generateInterpretation } from "./interpretation.service";
 
 /**
  * POST /interpretations/:dreamId

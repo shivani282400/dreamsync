@@ -5,8 +5,8 @@ import {
   getDreamReflectionsController,
   reflectionController,
   updateDreamReflectionController,
-} from "./reflection.controller.js"
-import { requireAuth } from "../auth/auth.middleware.js"
+} from "./reflection.controller"
+import { requireAuth } from "../auth/auth.middleware"
 
 export async function reflectionRoutes(app: FastifyInstance) {
   app.post(

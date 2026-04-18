@@ -1,9 +1,9 @@
 import { FastifyInstance } from "fastify";
-import { requireAuth } from "../auth/auth.middleware.js"
+import { requireAuth } from "../auth/auth.middleware"
 import {
   monthlyInsightsController,
   weeklyInsightsController,
-} from "./insights.controller.js"
+} from "./insights.controller"
 
 export async function insightsRoutes(app: FastifyInstance) {
   app.get(

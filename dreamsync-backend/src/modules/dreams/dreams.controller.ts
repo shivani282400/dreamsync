@@ -1,5 +1,5 @@
 import { FastifyRequest, FastifyReply } from "fastify";
-import * as DreamService from "./dreams.service.js"
+import * as DreamService from "./dreams.service"
 
 // GET /dreams/me
 export async function getMyDreamsController(

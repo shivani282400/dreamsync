@@ -1,6 +1,6 @@
 import { FastifyRequest, FastifyReply } from "fastify";
-import { registerUser, loginUser } from "./auth.service.js"
-import { signToken } from "./auth.jwt.js"
+import { registerUser, loginUser } from "./auth.service"
+import { signToken } from "./auth.jwt"
 
 type RegisterBody = {
   email: string;

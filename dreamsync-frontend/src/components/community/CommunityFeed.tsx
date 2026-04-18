@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
-import DreamPost from "./DreamPost";
+import DreamCard from "./DreamCard";
 import {
   getCommunityFeed,
   onCommunityFeedRefresh,
@@ -124,17 +124,16 @@ export default function CommunityFeed() {
       <div className="space-y-6">
         {filteredDreams.length > 0 ? (
           filteredDreams.map((dream, index) => (
-            <DreamPost
+            <DreamCard
               key={dream.id}
-              excerpt={dream.anonymizedText}
-              theme={dream.theme}
+              dream={dream}
               relativeTime={relativeTime(dream.createdAt)}
               index={index}
-              username={dream.username}
               showBridge={
                 recentSignals.moods.has(dream.theme.toLowerCase()) ||
                 recentSignals.tags.has(dream.theme.toLowerCase())
               }
+              onRefresh={loadFeed}
             />
           ))
         ) : (

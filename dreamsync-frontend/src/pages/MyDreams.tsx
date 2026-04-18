@@ -6,6 +6,7 @@ import Modal from "../components/ui/Modal";
 import {
   emitCommunityFeedRefresh,
   getDreams,
+  getDreamById,
   shareDreamToCommunity,
   unshareDreamFromCommunity,
 } from "../lib/apiClient";
@@ -161,6 +162,10 @@ export default function MyDreams() {
                 <div key={dream.id} className="space-y-2">
                   <button
                     onClick={() => navigate(`/interpretation/${dream.id}`)}
+                    onMouseEnter={() => {
+                      // Low-priority prefetch to warm up the interpretation page
+                      getDreamById(dream.id).catch(() => {});
+                    }}
                     className="w-full text-left"
                   >
                     <DreamCard

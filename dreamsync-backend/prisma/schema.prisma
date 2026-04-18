@@ -5,7 +5,7 @@ generator client {
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
-  directUrl = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -16,6 +16,8 @@ model User {
   username       String?           @unique
   usernameLocked Boolean           @default(false)
   dreams         Dream[]
+  likes          Like[]
+  comments       Comment[]
   insights       InsightSnapshot[]
 }
 
@@ -27,10 +29,43 @@ model Dream {
   tags           String[]
   createdAt      DateTime          @default(now())
   title          String?
+  shareId        String?           @unique
   communityShare CommunityDream?
+  likes          Like[]
+  comments       Comment[]
   user           User              @relation(fields: [userId], references: [id])
   reflections    DreamReflection[]
   interpretation Interpretation?
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model Like {
+  id        String   @id @default(cuid())
+  userId    String
+  dreamId   String
+  createdAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dream Dream @relation(fields: [dreamId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, dreamId])
+  @@index([dreamId])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  content   String
+  userId    String
+  dreamId   String
+  createdAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dream Dream @relation(fields: [dreamId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([dreamId])
 }
 
 model Interpretation {
@@ -48,6 +83,8 @@ model DreamReflection {
   answer    String
   createdAt DateTime @default(now())
   dream     Dream    @relation(fields: [dreamId], references: [id])
+
+  @@index([dreamId])
 }
 
 model InsightSnapshot {

@@ -25,5 +25,6 @@ export const API_BASE_URL = normalizedBaseUrl;
 
 // Safe helper to build absolute API URLs without malformed concatenation.
 export function buildApiUrl(path: string): string {
-  return new URL(path, API_BASE_URL).toString();
+  const normalizedPath = path.replace(/^\/+/, "");
+  return new URL(normalizedPath, API_BASE_URL).toString();
 }

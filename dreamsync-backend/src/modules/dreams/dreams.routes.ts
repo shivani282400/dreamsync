@@ -5,8 +5,8 @@ import {
   createDreamController,
   getSharedDreamController,
   createDreamShareController,
-} from "./dreams.controller.js"
-import { requireAuth } from "../auth/auth.middleware.js"
+} from "./dreams.controller"
+import { requireAuth } from "../auth/auth.middleware"
 
 export async function dreamsRoutes(app: FastifyInstance) {
   app.get<{ Params: { shareId: string } }>("/share/:shareId", getSharedDreamController);

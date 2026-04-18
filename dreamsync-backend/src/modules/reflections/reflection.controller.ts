@@ -1,6 +1,6 @@
 import { FastifyRequest, FastifyReply } from "fastify";
-import { generateMonthlyReflection } from "./reflection.service.js"
-import { rewriteReflectionPoetically } from "./reflection.poetic.service.js"
+import { generateMonthlyReflection } from "./reflection.service"
+import { rewriteReflectionPoetically } from "./reflection.poetic.service"
 
 /**
  * GET /reflections/monthly?period=YYYY-MM

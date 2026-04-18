@@ -1,18 +1,18 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
-import prismaPlugin from "./plugins/prisma.js";
+import prismaPlugin from "./plugins/prisma";
 
-import { interpretationRoutes } from "./modules/interpretation/interpretation.routes.js";
-import { authRoutes } from "./modules/auth/auth.routes.js";
-import { insightsRoutes } from "./modules/insights/insights.routes.js";
-import { reflectionRoutes } from "./modules/reflections/reflection.routes.js";
-import { dreamsRoutes } from "./modules/dreams/dreams.routes.js";
-import { statsRoutes } from "./modules/stats/stats.routes.js";
-import { communityRoutes } from "./modules/community/community.routes.js";
-import { yearlyArcRoutes } from "./modules/insights/yearlyArc.routes.js";
-import { dreamChaptersRoutes } from "./modules/insights/dreamChapters.routes.js";
-import { userRoutes } from "./modules/user/user.routes.js";
-import { healthRoutes } from "./routes/health.routes.js";
+import { interpretationRoutes } from "./modules/interpretation/interpretation.routes";
+import { authRoutes } from "./modules/auth/auth.routes";
+import { insightsRoutes } from "./modules/insights/insights.routes";
+import { reflectionRoutes } from "./modules/reflections/reflection.routes";
+import { dreamsRoutes } from "./modules/dreams/dreams.routes";
+import { statsRoutes } from "./modules/stats/stats.routes";
+import { communityRoutes } from "./modules/community/community.routes";
+import { yearlyArcRoutes } from "./modules/insights/yearlyArc.routes";
+import { dreamChaptersRoutes } from "./modules/insights/dreamChapters.routes";
+import { userRoutes } from "./modules/user/user.routes";
+import { healthRoutes } from "./routes/health.routes";
 
 export async function buildApp() {
   const app = Fastify({ logger: true });
@@ -21,12 +21,11 @@ export async function buildApp() {
   await app.register(cors, {
     origin: (origin, cb) => {
       if (!origin) return cb(null, true);
+      const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(",") || [];
+      const isLocal = origin.startsWith("http://localhost") || origin.startsWith("http://127.0.0.1");
+      const isRender = origin.includes(".onrender.com");
 
-      if (
-        origin.startsWith("http://localhost") ||
-        origin.startsWith("http://127.0.0.1") ||
-        origin.includes(".vercel.app")
-      ) {
+      if (isLocal || isRender || allowedOrigins.includes(origin) || origin.includes(".vercel.app")) {
         return cb(null, true);
       }
 
@@ -39,6 +38,25 @@ export async function buildApp() {
 
   // -------- PRISMA --------
   await app.register(prismaPlugin);
+
+  // -------- MONITORING --------
+  app.addHook("onRequest", (request, reply, done) => {
+    (request as any).startTime = Date.now();
+    done();
+  });
+
+  app.addHook("onResponse", (request, reply, done) => {
+    const start = (request as any).startTime;
+    if (start) {
+      const duration = Date.now() - start;
+      if (duration > 1000) {
+        request.log.warn(
+          `[PERF] ${request.method} ${request.url} took ${duration}ms`
+        );
+      }
+    }
+    done();
+  });
 
   // -------- ROUTES --------
   // Health should be registered first for Railway checks.

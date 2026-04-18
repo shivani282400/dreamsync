@@ -1,5 +1,5 @@
 import { InsightType, PrismaClient } from "@prisma/client";
-import { InsightContent } from "./insights.types.js"
+import { InsightContent } from "./insights.types"
 
 const MONTH_NAMES = [
   "January",
@@ -146,15 +146,29 @@ export async function getWeeklyInsightSnapshot(
   userId: string,
   week: string
 ): Promise<InsightContent> {
-  const existing = await prisma.insightSnapshot.findFirst({
-    where: { userId, period: week, type: InsightType.WEEKLY },
+  const range = getIsoWeekRange(week);
+
+  // 1️⃣ Check for existing snapshot first
+  const existing = await prisma.insightSnapshot.findUnique({
+    where: {
+      userId_period_type: {
+        userId,
+        period: week,
+        type: InsightType.WEEKLY,
+      },
+    },
   });
 
+  // Only use cache if it was created after the range end (period is complete)
+  // or if it's relatively fresh (within 1 hour)
   if (existing) {
-    return existing.content as InsightContent;
+    const isPastPeriod = range.end < new Date();
+    const isFresh = (Date.now() - new Date(existing.createdAt).getTime()) < 3600000;
+    
+    if (isPastPeriod || isFresh) {
+      return existing.content as InsightContent;
+    }
   }
-
-  const range = getIsoWeekRange(week);
 
   const dreams = await prisma.dream.findMany({
     where: {
@@ -213,8 +227,16 @@ export async function getWeeklyInsightSnapshot(
     closingNote: buildClosingNote(dreamCount, "weekly"),
   };
 
-  await prisma.insightSnapshot.create({
-    data: {
+  await prisma.insightSnapshot.upsert({
+    where: {
+      userId_period_type: {
+        userId,
+        period: week,
+        type: InsightType.WEEKLY,
+      },
+    },
+    update: { content },
+    create: {
       userId,
       period: week,
       type: InsightType.WEEKLY,
@@ -230,15 +252,27 @@ export async function getMonthlyInsightSnapshot(
   userId: string,
   month: string
 ): Promise<InsightContent> {
-  const existing = await prisma.insightSnapshot.findFirst({
-    where: { userId, period: month, type: InsightType.MONTHLY },
+  const range = getMonthRange(month);
+
+  // 1️⃣ Check for existing snapshot first
+  const existing = await prisma.insightSnapshot.findUnique({
+    where: {
+      userId_period_type: {
+        userId,
+        period: month,
+        type: InsightType.MONTHLY,
+      },
+    },
   });
 
   if (existing) {
-    return existing.content as InsightContent;
+    const isPastPeriod = range.end < new Date();
+    const isFresh = (Date.now() - new Date(existing.createdAt).getTime()) < 3600000;
+    
+    if (isPastPeriod || isFresh) {
+      return existing.content as InsightContent;
+    }
   }
-
-  const range = getMonthRange(month);
 
   const dreams = await prisma.dream.findMany({
     where: {
@@ -297,8 +331,16 @@ export async function getMonthlyInsightSnapshot(
     closingNote: buildClosingNote(dreamCount, "monthly"),
   };
 
-  await prisma.insightSnapshot.create({
-    data: {
+  await prisma.insightSnapshot.upsert({
+    where: {
+      userId_period_type: {
+        userId,
+        period: month,
+        type: InsightType.MONTHLY,
+      },
+    },
+    update: { content },
+    create: {
       userId,
       period: month,
       type: InsightType.MONTHLY,

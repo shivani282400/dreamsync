@@ -9,7 +9,7 @@ export async function getUserDreams(
     where: { userId },
     orderBy: { createdAt: "desc" },
     include: {
-      interpretation: true,
+      interpretation: { select: { id: true } },
       reflections: { select: { id: true } },
     },
   });
