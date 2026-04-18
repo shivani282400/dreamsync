@@ -6,10 +6,11 @@ DreamSync is intentionally not a social network, productivity tool, or diagnosti
 
 ## Why DreamSync Is Not a CRUD App
 DreamSync is built around lived experience, not records.
-Dreams are stored immediately and interpreted asynchronously
-Reflections are written by the user, not generated content
-Insights are delivered as calm narrative letters, not dashboards
-The system remains usable and meaningful even when AI is unavailable
+- **Async Processing**: Dreams are stored immediately and interpreted asynchronously.
+- **User Agency**: Reflections are written by the user, not AI-generated.
+- **Narrative UX**: Insights are delivered as calm narrative letters, not analytics dashboards.
+- **Robustness**: The system remains usable and meaningful even when AI services are unavailable.
+
 This architecture prioritizes continuity, safety, and trust over automation.
 
 ## Core Vision
@@ -21,172 +22,124 @@ This architecture prioritizes continuity, safety, and trust over automation.
 
 ## Architecture (High Level)
 - **Frontend**: Vite + React + TypeScript + Tailwind + React Router + Zustand
-- **Backend**: Fastify + Prisma + Neon PostgreSQL
-- **AI**: Google Gemini (interpretation + embeddings), Pinecone (vector memory)
+- **Backend**: Node.js + Fastify + Prisma + Neon PostgreSQL
+- **AI**: Groq (Primary) / Gemini 2.0 (Fallback) + Pinecone (Vector Memory)
 
 ```mermaid
 graph TD
     A[User Browser] --> B[Frontend - React/Vite]
     B -->|JWT| C[Fastify API]
     C --> D[PostgreSQL - Neon]
-    C --> E[LLM Service]
-    C --> F[Vector Database]
+    C --> E[LLM Service (Groq/Gemini)]
+    C --> F[Vector Database (Pinecone)]
     E --> C
     F --> C
 ```
 
-
-
 ---
 
 ## Key Features
-- Secure authentication with JWT
-- Private dream journaling
-- Asynchronous AI-assisted interpretation
-- User-written reflections
-- Weekly / monthly / yearly insight letters
-- Semantic pattern detection using embeddings
-- Optional community layer (privacy-aware)
+- **Secure Auth**: JWT-based authentication for private access.
+- **Private Journaling**: Simple, focused interface for capturing dreams.
+- **AI interpretation**: Groq/Gemini powered insights with focus on psychology.
+- **Reflections**: Dedicated space for user-driven emotional processing.
+- **Insight Letters**: Weekly / monthly / yearly analysis delivered as narrative letters.
+- **Semantic Memory**: Pattern detection using vector embeddings to find connections over years.
 
 ---
 
 ## Tech Stack
 
-**Frontend**
-- React
+### Frontend
+- React 19
 - Vite
 - TypeScript
 - Tailwind CSS
-- React Router
+- Framer Motion (Animations)
 
-**Backend**
-- Node.js
+### Backend
+- Node.js (CommonJS)
 - Fastify
 - Prisma ORM
+- Zod (Validation)
 
-**Data & AI**
-- Neon PostgreSQL
-- LLM (Gemini or equivalent)
-- Vector database (Pinecone)
-
----
-
-## System Flow
-- User authenticates and creates a dream entry
-- Dream is stored deterministically in PostgreSQL
-- Interpretation job runs asynchronously
-- LLM generates interpretation and reflection prompts
-- Embeddings are stored in the vector database
-- User writes reflections
-- Periodic insight jobs analyze stored data
-- Insights are delivered as reflective letters
+### Data & AI
+- **Database**: Neon PostgreSQL
+- **LLM**: GroqCloud (llama-3.3-70b) / Google Gemini 2.0 Flash (Fallback)
+- **Vector Search**: Pinecone
 
 ---
 
-## Deployment (Production Experience)
+## Deployment
 
-**Frontend**
-- Deployed on Vercel
-- Production environment variables configured correctly
-- Debugged build-time vs runtime env mismatches
-- Fixed malformed API base URLs
+### Frontend (Vercel)
+- Configured with `VITE_API_BASE_URL` pointing to the backend.
+- Handled built-time vs runtime environment isolation.
 
-**Backend**
-- Deployed on Railway
-- Fastify running in ESM mode
-- Correct `.js` imports after TypeScript build
-- Modular routes (auth, dreams, interpretation, reflections, insights, stats)
-- `/health` endpoint for uptime monitoring
-
-**Networking & Ops**
-- CORS configured across multiple production origins
-- Proper handling of preflight (OPTIONS) requests
-- Debugged DNS, CORS, and cross-origin failures
-- Handled crashes, restarts, and build output issues gracefully
-
-The system continues running independently after deployment.
-
----
-
-
+### Backend (Render/Railway)
+- Fastify server running on `0.0.0.0` for production port binding.
+- Database connection pooling for Neon compatibility.
+- Standardized CORS handling for production domains.
 
 ---
 
 ## Local Development
 
-**Prerequisites**
+### Prerequisites
 - Node.js 18+
-- PostgreSQL database
-- LLM and vector database API keys
+- PostgreSQL (or Neon DB)
+- API keys for Groq/Gemini and Pinecone
 
-**Backend**
-```bash
-cd backend
->>>>>>> 308d7d1 (Add production-grade README)
-npm install
-npm run dev
-```
-
-
-Backend:
+### Backend Setup
 ```bash
 cd dreamsync-backend
-=======
-**Environment Variables**
-```
-DATABASE_URL=
-JWT_SECRET=
-LLM_API_KEY=
-VECTOR_DB_API_KEY=
-FRONTEND_ORIGIN=
-```
-
-**Frontend**
-```bash
-cd frontend
 npm install
+# Run Prisma migrations
+npx prisma generate
+npx prisma db push
+# Start dev server (Port 4000)
 npm run dev
 ```
 
-<<<<<<< HEAD
-Ensure `.env` is configured for:
-- `JWT_SECRET`
-- `DATABASE_URL`
-- `GEMINI_API_KEY`
-- `PINECONE_API_KEY`
-
-## Status
-Post-MVP polishing in progress:
-
-Community UX refinement
-
-Full-screen insight reading experience
-
-Yearly emotional arc finalization
-
-Documentation and deployment hardening
-=======
-**Environment Variables**
+**Backend `.env` Requirements:**
+```env
+DATABASE_URL="postgresql://..."
+DIRECT_URL="postgresql://..."
+JWT_SECRET="your-secret"
+GROQ_API_KEY="gsk_..."
+GEMINI_API_KEY="AIza..."
+PINECONE_API_KEY="..."
 ```
-VITE_API_BASE_URL=
+
+### Frontend Setup
+```bash
+cd dreamsync-frontend
+npm install
+# Start dev server (Port 5173)
+npm run dev
+```
+
+**Frontend `.env` Requirements:**
+```env
+VITE_API_URL="http://localhost:4000"
 ```
 
 ---
 
 ## Project Status
 
-**Completed**
-- Authentication
-- Dream journaling
-- Async interpretation
-- Reflections and insights
-- Full production deployment
+### ✅ Completed
+- Secure JWT Authentication
+- Dream journaling and storage
+- Async AI interpretation (Groq + Gemini fallback)
+- Emotional pattern detection and reflections
+- Production-grade deployment configuration
 
-**In Progress**
-- UI polish
-- Insight quality tuning
-- Optional community features
-- Monitoring and analytics improvements
+### 🚧 In Progress
+- UI polish and micro-animations (Framer Motion)
+- Community feature refinement (Privacy-aware)
+- Full-screen insight reading experience
+- Yearly emotional arc finalization
 
 ---
 
@@ -194,8 +147,3 @@ VITE_API_BASE_URL=
 
 **Shivani**  
 Full-stack developer focused on thoughtful product design, production systems, and responsible AI-assisted applications.
-
----
-
-
-
