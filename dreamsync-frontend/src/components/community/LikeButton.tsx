@@ -1,4 +1,4 @@
-import { motion } from "framer-motion";
+import { motion, type Variants } from "framer-motion";
 
 type Props = {
   isLiked: boolean;
@@ -7,14 +7,14 @@ type Props = {
   onClick: () => void;
 };
 
-const burstVariants = {
+const burstVariants: Variants = {
   idle: { opacity: 0, scale: 0.2 },
   active: (index: number) => ({
     opacity: [0, 0.95, 0],
     x: [0, Math.cos((index / 6) * Math.PI * 2) * 20],
     y: [0, Math.sin((index / 6) * Math.PI * 2) * 20],
     scale: [0.4, 1.1, 0.2],
-    transition: { duration: 0.42, ease: "easeOut" },
+    transition: { duration: 0.42, ease: "easeOut" as const },
   }),
 };
 
@@ -39,7 +39,7 @@ export default function LikeButton({
         className="relative flex h-5 w-5 items-center justify-center"
         whileTap={{ scale: 1.35 }}
         animate={isLiked ? { scale: [1, 1.32, 1] } : { scale: 1 }}
-        transition={{ duration: 0.28, ease: "easeOut" }}
+        transition={{ duration: 0.28, ease: "easeOut" as const }}
       >
         {Array.from({ length: 6 }).map((_, index) => (
           <motion.span
